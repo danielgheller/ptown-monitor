@@ -1,0 +1,74 @@
+name: Hourly status check
+
+# Runs every hour. Emails Daniel only if the overall status changed from the
+# previous run (tracked in notify-state.json, persisted via the Actions cache).
+# So a sustained outage produces ONE alert email when it starts, and ONE when
+# it recovers — not 24 emails per day.
+#
+# Manual trigger is kept for testing ("Run workflow" button on the Actions tab).
+
+on:
+  schedule:
+    # Every hour at :15, to avoid the thundering-herd at :00.
+    - cron: '15 * * * *'
+  workflow_dispatch:
+
+# Only one run at a time — if an hourly run is somehow still going when the
+# next one fires, cancel the new one rather than doubling up on the state
+# file. (Very unlikely in practice; the checks take under 10 seconds.)
+concurrency:
+  group: ptown-hourly
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Restore the most recent state file from the Actions cache so we know
+      # what the status was on the last run. First ever run will miss (that's
+      # fine — notify.py treats "no prior state" as OK-baseline).
+      - name: Restore prior notify-state
+        uses: actions/cache/restore@v4
+        id: state-restore
+        with:
+          path: notify-state.json
+          key: ptown-notify-state-${{ github.run_id }}
+          restore-keys: |
+            ptown-notify-state-
+
+      - name: Run status check
+        env:
+          NUHEAT_EMAIL:       ${{ secrets.NUHEAT_EMAIL }}
+          NUHEAT_PASSWORD:    ${{ secrets.NUHEAT_PASSWORD }}
+          SMARTTUB_EMAIL:     ${{ secrets.SMARTTUB_EMAIL }}
+          SMARTTUB_PASSWORD:  ${{ secrets.SMARTTUB_PASSWORD }}
+          NEST_PROJECT_ID:    ${{ secrets.NEST_PROJECT_ID }}
+          NEST_CLIENT_ID:     ${{ secrets.NEST_CLIENT_ID }}
+          NEST_CLIENT_SECRET: ${{ secrets.NEST_CLIENT_SECRET }}
+          NEST_REFRESH_TOKEN: ${{ secrets.NEST_REFRESH_TOKEN }}
+          RESEND_API_KEY:     ${{ secrets.RESEND_API_KEY }}
+          NOTIFY_TO_EMAIL:    ${{ secrets.NOTIFY_TO_EMAIL }}
+        run: python notify.py --on-change-only
+
+      # Always save the updated state file back to the cache, even if the
+      # notify step failed — otherwise a transient API blip would cause us to
+      # email "recovered!" on the next run.
+      - name: Save notify-state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: notify-state.json
+          key: ptown-notify-state-${{ github.run_id }}

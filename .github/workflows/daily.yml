@@ -1,0 +1,44 @@
+name: Daily summary
+
+# Once-a-day "everything's fine" email so you know the monitor itself is alive.
+# Runs at 12:00 UTC = 8am EDT in summer / 7am EST in winter. We accept the
+# one-hour drift across DST rather than maintaining two schedules.
+#
+# Unlike the hourly workflow, this one ALWAYS sends — that's the whole point.
+# It uses `notify.py --daily` which bypasses the change-detection logic.
+
+on:
+  schedule:
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+
+jobs:
+  summary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Send daily summary
+        env:
+          NUHEAT_EMAIL:       ${{ secrets.NUHEAT_EMAIL }}
+          NUHEAT_PASSWORD:    ${{ secrets.NUHEAT_PASSWORD }}
+          SMARTTUB_EMAIL:     ${{ secrets.SMARTTUB_EMAIL }}
+          SMARTTUB_PASSWORD:  ${{ secrets.SMARTTUB_PASSWORD }}
+          NEST_PROJECT_ID:    ${{ secrets.NEST_PROJECT_ID }}
+          NEST_CLIENT_ID:     ${{ secrets.NEST_CLIENT_ID }}
+          NEST_CLIENT_SECRET: ${{ secrets.NEST_CLIENT_SECRET }}
+          NEST_REFRESH_TOKEN: ${{ secrets.NEST_REFRESH_TOKEN }}
+          RESEND_API_KEY:     ${{ secrets.RESEND_API_KEY }}
+          NOTIFY_TO_EMAIL:    ${{ secrets.NOTIFY_TO_EMAIL }}
+        run: python notify.py --daily

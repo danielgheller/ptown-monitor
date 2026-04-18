@@ -1,0 +1,315 @@
+#!/usr/bin/env python3
+"""
+Send the Ptown dashboard output to Daniel via email, using Resend.
+
+Resend is a transactional email service (https://resend.com). We picked it
+over Gmail SMTP so that if the API key ever leaks, the blast radius is
+"someone sends up to 3000 emails/month from onboarding@resend.dev" rather
+than "someone has full read/write access to a primary inbox."
+
+The free tier without a verified domain requires that the recipient email
+match the account owner's email. That's us, so no domain verification is
+needed.
+
+Reads from `.env` in the same folder:
+
+    RESEND_API_KEY=re_...             # API key from resend.com dashboard
+    NOTIFY_TO_EMAIL=danielgheller@gmail.com   # recipient (your Resend signup address)
+    NOTIFY_FROM_EMAIL=Ptown Monitor <onboarding@resend.dev>   # optional override
+
+Usage:
+    ./ptown notify                      # send email if overall status is not OK
+    ./ptown notify --daily              # always send (for the daily summary)
+    ./ptown notify --test               # send a hardcoded test email and exit
+    ./ptown notify --stdin              # read dashboard JSON from stdin and send
+    ./ptown notify --on-change-only     # send ONLY when status differs from the
+                                        # last run (tracked in notify-state.json).
+                                        # This is what the hourly scheduler uses
+                                        # to avoid sending 24 emails during a
+                                        # sustained outage.
+
+When invoked without --stdin, it shells out to `dashboard.py --json` itself
+so the scheduler can just call `./ptown notify` / `./ptown notify --daily`.
+
+Exit codes:
+    0 = email sent (or intentionally suppressed, i.e. all-OK on a non-daily run)
+    1 = email send failed
+    2 = configuration error (missing API key, bad recipient, etc.)
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+import time
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+RESEND_URL = "https://api.resend.com/emails"
+DEFAULT_FROM = "Ptown Monitor <onboarding@resend.dev>"
+DASHBOARD_TIMEOUT = 90
+STATE_FILE = HERE / "notify-state.json"
+
+
+# ---------- tiny .env loader ----------
+def _load_env(path: Path) -> None:
+    if not path.exists():
+        return
+    for raw in path.read_text().splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, _, v = line.partition("=")
+        v = v.strip().strip('"').strip("'")
+        os.environ.setdefault(k.strip(), v)
+
+
+# ---------- subject-line building ----------
+STATUS_PREFIX = {
+    "ok":   "✅ Ptown OK",
+    "warn": "⚠️  Ptown WARN",
+    "crit": "🚨 Ptown ALERT",
+}
+
+
+def _build_subject(dashboard: dict, *, is_daily: bool) -> str:
+    status = dashboard.get("overall_status", "ok")
+    prefix = STATUS_PREFIX.get(status, "Ptown")
+    if is_daily:
+        prefix += " — daily"
+    # Append short system hint for at-a-glance triage in iOS notifications.
+    if status != "ok":
+        bad_systems = [
+            s["system"]
+            for s in dashboard.get("systems", [])
+            if s.get("overall_status") != "ok"
+        ]
+        if bad_systems:
+            prefix += f" — {', '.join(bad_systems)}"
+    return prefix
+
+
+def _build_body(dashboard: dict) -> str:
+    """Turn the JSON dashboard into a plain-text email body.
+
+    We render the same shape dashboard.py does when invoked without --json,
+    but without emoji (iOS mail renders them fine but some email clients
+    garble them — plain ASCII is safest).
+    """
+    lines = [f"Ptown status — {dashboard.get('timestamp', time.strftime('%Y-%m-%dT%H:%M:%S%z'))}", ""]
+    tag = {"ok": "[ OK ]", "warn": "[WARN]", "crit": "[CRIT]"}
+
+    for sys_result in dashboard.get("systems", []):
+        system = sys_result.get("system", "?")
+        label_map = {"nuheat": "Heated floors", "hottub": "Hot tub", "nest": "Nest"}
+        label = label_map.get(system, system.title())
+        overall = sys_result.get("overall_status", "ok")
+        lines.append(f"{tag.get(overall, '[ ?? ]')} {label}")
+
+        if sys_result.get("error"):
+            lines.append(f"     ! {sys_result['error']}")
+            lines.append("")
+            continue
+
+        for dev in sys_result.get("devices", []):
+            name = dev.get("name", "?")
+            cur = dev.get("current_f")
+            setp = dev.get("setpoint_f")
+            mode = dev.get("mode") or ""
+            cur_s = f"{cur:5.1f}°F" if cur is not None else "   ? °F"
+            set_s = f"{setp:5.1f}°F" if setp is not None else "   ? °F"
+            detail = f" — {dev['reason']}" if dev.get("reason") else ""
+            suffix = f"  [{dev.get('status', 'ok').upper()}]" if dev.get("status") not in (None, "ok") else ""
+            line = f"     {name:<20} {cur_s}  (set {set_s}, {mode}){suffix}{detail}"
+            lines.append(line)
+        lines.append("")
+
+    overall = dashboard.get("overall_status", "ok")
+    if overall == "ok":
+        lines.append("All systems nominal.")
+    elif overall == "warn":
+        lines.append("WARNING: one or more systems need a look (see above).")
+    else:
+        lines.append("CRITICAL: something is wrong (see above).")
+    lines.append("")
+    lines.append("— Ptown Monitor")
+    return "\n".join(lines)
+
+
+# ---------- Resend HTTP ----------
+def _send_resend(api_key: str, from_addr: str, to_addr: str,
+                 subject: str, text_body: str) -> None:
+    payload = json.dumps({
+        "from": from_addr,
+        "to": [to_addr],
+        "subject": subject,
+        "text": text_body,
+    }).encode()
+    req = urllib.request.Request(
+        RESEND_URL,
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+            "User-Agent": "ptown-monitor/0.1",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            body = resp.read().decode()
+            # Resend returns {"id": "..."} on success
+            try:
+                parsed = json.loads(body)
+                msg_id = parsed.get("id", "?")
+            except json.JSONDecodeError:
+                msg_id = "?"
+            print(f"Sent (id={msg_id})")
+    except urllib.error.HTTPError as e:
+        body = e.read().decode(errors="replace")
+        raise RuntimeError(f"Resend HTTP {e.code}: {body}") from e
+
+
+# ---------- state tracking (for --on-change-only) ----------
+def _current_state(dashboard: dict) -> dict:
+    """Extract just the status bits worth comparing across runs."""
+    return {
+        "overall_status": dashboard.get("overall_status", "ok"),
+        "system_statuses": {
+            s.get("system", "?"): s.get("overall_status", "ok")
+            for s in dashboard.get("systems", [])
+        },
+    }
+
+
+def _load_previous_state() -> dict | None:
+    if not STATE_FILE.exists():
+        return None
+    try:
+        return json.loads(STATE_FILE.read_text())
+    except Exception:
+        return None
+
+
+def _save_state(state: dict) -> None:
+    state_with_ts = {**state, "last_updated": time.strftime("%Y-%m-%dT%H:%M:%S%z")}
+    STATE_FILE.write_text(json.dumps(state_with_ts, indent=2) + "\n")
+
+
+def _state_differs(current: dict, previous: dict | None) -> bool:
+    """True if we should alert — either first-run-with-issues or any status changed."""
+    if previous is None:
+        # No prior state. Only alert if something is currently wrong. Otherwise
+        # silently establish a baseline.
+        return current.get("overall_status", "ok") != "ok"
+    if current.get("overall_status") != previous.get("overall_status"):
+        return True
+    cur_sys = current.get("system_statuses", {})
+    prev_sys = previous.get("system_statuses", {})
+    if set(cur_sys.keys()) != set(prev_sys.keys()):
+        return True
+    for k, v in cur_sys.items():
+        if prev_sys.get(k) != v:
+            return True
+    return False
+
+
+def _fetch_dashboard_json() -> dict:
+    """Invoke dashboard.py --json in the same interpreter and return parsed dict."""
+    result = subprocess.run(
+        [sys.executable, str(HERE / "dashboard.py"), "--json"],
+        capture_output=True, text=True, timeout=DASHBOARD_TIMEOUT,
+    )
+    if not result.stdout.strip():
+        raise RuntimeError(f"dashboard.py produced no output; stderr={result.stderr[:500]}")
+    try:
+        return json.loads(result.stdout)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"dashboard.py emitted invalid JSON: {e}; "
+                           f"stdout_head={result.stdout[:300]}") from e
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Email the Ptown status via Resend")
+    parser.add_argument("--daily", action="store_true",
+                        help="always send, regardless of status (daily summary)")
+    parser.add_argument("--test", action="store_true",
+                        help="send a short hardcoded test email and exit")
+    parser.add_argument("--stdin", action="store_true",
+                        help="read dashboard JSON from stdin instead of invoking dashboard.py")
+    parser.add_argument("--on-change-only", dest="on_change_only", action="store_true",
+                        help="send email only if status changed since last run "
+                             "(state persisted in notify-state.json)")
+    args = parser.parse_args()
+
+    _load_env(HERE / ".env")
+    api_key = (os.environ.get("RESEND_API_KEY") or "").strip()
+    to_addr = (os.environ.get("NOTIFY_TO_EMAIL") or "").strip()
+    from_addr = (os.environ.get("NOTIFY_FROM_EMAIL") or DEFAULT_FROM).strip()
+
+    if not api_key:
+        print("Missing RESEND_API_KEY in .env", file=sys.stderr)
+        return 2
+    if not to_addr:
+        print("Missing NOTIFY_TO_EMAIL in .env", file=sys.stderr)
+        return 2
+
+    if args.test:
+        subject = "Ptown Monitor — test email"
+        body = (
+            "This is a test email from the Ptown monitor.\n"
+            "If you're seeing this, Resend is wired up correctly.\n"
+        )
+        try:
+            _send_resend(api_key, from_addr, to_addr, subject, body)
+        except Exception as e:
+            print(f"Send failed: {e}", file=sys.stderr)
+            return 1
+        return 0
+
+    # Get the dashboard JSON.
+    try:
+        if args.stdin:
+            dashboard = json.loads(sys.stdin.read())
+        else:
+            dashboard = _fetch_dashboard_json()
+    except Exception as e:
+        print(f"Could not obtain dashboard data: {e}", file=sys.stderr)
+        return 1
+
+    overall = dashboard.get("overall_status", "ok")
+
+    # --on-change-only: suppress anything that matches prior state.
+    if args.on_change_only:
+        current_state = _current_state(dashboard)
+        previous_state = _load_previous_state()
+        changed = _state_differs(current_state, previous_state)
+        # Always persist current state, even if we won't send — this keeps the
+        # state file fresh and lets us detect future changes correctly.
+        _save_state(current_state)
+        if not changed:
+            print(f"Status unchanged from previous run ({overall}); no email sent.")
+            return 0
+        print(f"Status changed (prev={previous_state}, now={current_state}); sending.")
+
+    # Suppress non-daily OK runs (unless --on-change-only already decided to send).
+    elif overall == "ok" and not args.daily:
+        print("Status OK and --daily not set; suppressing email.")
+        return 0
+
+    subject = _build_subject(dashboard, is_daily=args.daily)
+    body = _build_body(dashboard)
+    try:
+        _send_resend(api_key, from_addr, to_addr, subject, body)
+    except Exception as e:
+        print(f"Send failed: {e}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

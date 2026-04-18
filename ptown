@@ -1,0 +1,51 @@
+#!/bin/bash
+# Ptown monitor launcher.
+#
+# Usage:
+#   ./ptown nuheat          # check heated floors
+#   ./ptown hottub          # check hot tub
+#   ./ptown nest            # check Nest thermostats
+#   ./ptown all             # run all three in parallel and print a combined report
+#   ./ptown dashboard       # friendly traffic-light dashboard (green/yellow/red per system)
+#   ./ptown notify          # email the status (only if WARN/CRIT)
+#   ./ptown notify --daily  # email the status (always — for the daily summary)
+#   ./ptown notify --test   # send a short test email to verify Resend is wired up
+#   ./ptown <name> --raw    # dump raw API response for that device
+#   ./ptown <name> --json   # emit normalized JSON (used by dashboard.py)
+#
+# On first run, this creates a virtualenv in .venv and installs the
+# pip packages listed in requirements.txt. Subsequent runs reuse it.
+
+set -euo pipefail
+
+HERE="$(cd "$(dirname "$0")" && pwd)"
+cd "$HERE"
+
+if [[ $# -lt 1 ]]; then
+    echo "Usage: ./ptown <device> [flags]" >&2
+    echo "       devices: nuheat, hottub, nest, all, dashboard, notify" >&2
+    exit 64
+fi
+
+device="$1"
+shift
+
+script="${device}.py"
+if [[ ! -f "$script" ]]; then
+    echo "No such device script: $script" >&2
+    echo "Available:" >&2
+    ls -1 *.py 2>/dev/null | sed 's/^/  /' >&2
+    exit 66
+fi
+
+# Set up venv on first run.
+if [[ ! -d .venv ]]; then
+    echo "First run — creating .venv and installing dependencies..." >&2
+    python3 -m venv .venv
+    ./.venv/bin/pip install --quiet --upgrade pip
+    if [[ -f requirements.txt ]]; then
+        ./.venv/bin/pip install --quiet -r requirements.txt
+    fi
+fi
+
+exec ./.venv/bin/python3 "$script" "$@"

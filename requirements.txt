@@ -1,0 +1,2 @@
+python-smarttub>=0.0.35
+aiohttp>=3.9

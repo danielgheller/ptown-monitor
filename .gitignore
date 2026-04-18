@@ -1,0 +1,14 @@
+# Never commit real credentials
+.env
+.env.local
+*.key
+*.pem
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Runtime state — persisted via GitHub Actions cache between runs.
+# Safe to delete locally; will be regenerated on next run.
+notify-state.json
