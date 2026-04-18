@@ -12,6 +12,12 @@ on:
     - cron: '0 12 * * *'
   workflow_dispatch:
 
+# Opt all JS-based actions into Node 24. GitHub is deprecating Node 20 on
+# their runners in mid-2026; this env var is their documented escape hatch so
+# we don't have to track every action's major-version bump individually.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   summary:
     runs-on: ubuntu-latest

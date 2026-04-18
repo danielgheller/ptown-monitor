@@ -90,6 +90,11 @@ def _build_subject(dashboard: dict, *, is_daily: bool) -> str:
         ]
         if bad_systems:
             prefix += f" — {', '.join(bad_systems)}"
+    # Date suffix on daily summaries so the archive is easy to scan by month
+    # ("did I get my April 18 summary?") and so two same-day emails aren't
+    # indistinguishable in a long thread.
+    if is_daily:
+        prefix += f" ({time.strftime('%b %d')})"
     return prefix
 
 
