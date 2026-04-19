@@ -1,9 +1,13 @@
 name: Hourly status check
 
-# Runs every hour. Emails Daniel only if the overall status changed from the
-# previous run (tracked in notify-state.json, persisted via the Actions cache).
-# So a sustained outage produces ONE alert email when it starts, and ONE when
-# it recovers — not 24 emails per day.
+# Runs every hour. Two side effects:
+#   1. notify.py --on-change-only emails Daniel when overall status changes
+#      (vs. prior run, tracked in notify-state.json via Actions cache).
+#   2. build_site.py refreshes docs/data.json for the GitHub Pages dashboard;
+#      if the file changed, we commit and push back to main.
+#
+# The dashboard.py call happens once and its output is piped into both tools,
+# so we don't hit the vendor APIs twice per run.
 #
 # Manual trigger is kept for testing ("Run workflow" button on the Actions tab).
 
@@ -15,7 +19,7 @@ on:
 
 # Only one run at a time — if an hourly run is somehow still going when the
 # next one fires, cancel the new one rather than doubling up on the state
-# file. (Very unlikely in practice; the checks take under 10 seconds.)
+# file. (Very unlikely in practice; the checks take under 30 seconds.)
 concurrency:
   group: ptown-hourly
   cancel-in-progress: false
@@ -25,6 +29,11 @@ concurrency:
 # we don't have to track every action's major-version bump individually.
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+# Default GITHUB_TOKEN is read-only on workflows triggered by schedule; we
+# need write so the "Commit dashboard" step below can push docs/data.json.
+permissions:
+  contents: write
 
 jobs:
   check:
@@ -55,7 +64,7 @@ jobs:
           restore-keys: |
             ptown-notify-state-
 
-      - name: Run status check
+      - name: Run checks, notify, and build site
         env:
           NUHEAT_EMAIL:       ${{ secrets.NUHEAT_EMAIL }}
           NUHEAT_PASSWORD:    ${{ secrets.NUHEAT_PASSWORD }}
@@ -67,7 +76,40 @@ jobs:
           NEST_REFRESH_TOKEN: ${{ secrets.NEST_REFRESH_TOKEN }}
           RESEND_API_KEY:     ${{ secrets.RESEND_API_KEY }}
           NOTIFY_TO_EMAIL:    ${{ secrets.NOTIFY_TO_EMAIL }}
-        run: python notify.py --on-change-only
+        run: |
+          set -e
+          # Single source of truth for this run's readings.
+          python dashboard.py --json > /tmp/dashboard.json
+
+          # notify.py failure must NOT prevent the dashboard update — e.g. if
+          # Resend is rate-limited or down, the HTML dashboard is still the
+          # fastest way for Daniel to check status, and we don't want to skip it.
+          set +e
+          python notify.py --stdin --on-change-only < /tmp/dashboard.json
+          notify_exit=$?
+          set -e
+          if [ $notify_exit -ne 0 ]; then
+            echo "::warning::notify.py exited with code $notify_exit (continuing to site build)"
+          fi
+
+          python build_site.py --stdin < /tmp/dashboard.json
+
+      # Commit the refreshed dashboard. We only commit if docs/ actually
+      # changed — usually data.json changes every run (new reading appended to
+      # history) but this guard avoids empty commits if dashboard.py happened
+      # to emit byte-identical output.
+      - name: Commit dashboard update
+        if: always()
+        run: |
+          if [ -n "$(git status --porcelain docs/)" ]; then
+            git config user.name "Ptown Monitor Bot"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add docs/
+            git commit -m "Dashboard: hourly update [skip ci]"
+            git push
+          else
+            echo "No dashboard changes to commit."
+          fi
 
       # Always save the updated state file back to the cache, even if the
       # notify step failed — otherwise a transient API blip would cause us to
