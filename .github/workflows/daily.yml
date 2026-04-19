@@ -1,15 +1,23 @@
 name: Daily summary
 
 # Once-a-day "everything's fine" email so you know the monitor itself is alive.
-# Runs at 12:00 UTC = 8am EDT in summer / 7am EST in winter. We accept the
-# one-hour drift across DST rather than maintaining two schedules.
+#
+# Scheduled for 09:17 UTC = 5:17am EDT (summer) / 4:17am EST (winter). Two
+# reasons for this specific time:
+#   1. We fire WELL before the target inbox-arrival time (~7am ET) so that
+#      GitHub Actions' typical 30-60 min cron delay — and the occasional
+#      2-3 hour delay — still lands the email before the morning check.
+#   2. :17 avoids the :00 "thundering herd" minute, which is by far the most
+#      contested and routinely delayed slot on the shared scheduler. An
+#      earlier incident (Apr 19 2026) had the :00 daily run delayed ~4 hours.
+# We accept the one-hour drift across DST rather than maintaining two schedules.
 #
 # Unlike the hourly workflow, this one ALWAYS sends — that's the whole point.
 # It uses `notify.py --daily` which bypasses the change-detection logic.
 
 on:
   schedule:
-    - cron: '0 12 * * *'
+    - cron: '17 9 * * *'
   workflow_dispatch:
 
 # Opt all JS-based actions into Node 24. GitHub is deprecating Node 20 on
