@@ -98,18 +98,35 @@ jobs:
       # changed — usually data.json changes every run (new reading appended to
       # history) but this guard avoids empty commits if dashboard.py happened
       # to emit byte-identical output.
+      #
+      # Push is retried with a rebase on rejection. This handles three races:
+      #   - concurrent workflows (shouldn't happen with our `concurrency:` group,
+      #     but belt-and-suspenders)
+      #   - "Re-run jobs" from an older SHA while `main` has already advanced
+      #   - manual pushes from Daniel landing mid-run
+      # `-X theirs` prefers this run's fresh data.json over any stale version
+      # on the base branch, since we fully own that file.
       - name: Commit dashboard update
         if: always()
         run: |
-          if [ -n "$(git status --porcelain docs/)" ]; then
-            git config user.name "Ptown Monitor Bot"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add docs/
-            git commit -m "Dashboard: hourly update [skip ci]"
-            git push
-          else
+          if [ -z "$(git status --porcelain docs/)" ]; then
             echo "No dashboard changes to commit."
+            exit 0
           fi
+          git config user.name "Ptown Monitor Bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/
+          git commit -m "Dashboard: hourly update [skip ci]"
+          for attempt in 1 2 3; do
+            if git push; then
+              echo "Pushed on attempt $attempt."
+              exit 0
+            fi
+            echo "Push attempt $attempt rejected; rebasing onto origin/main..."
+            git pull --rebase -X theirs origin main
+          done
+          echo "::error::Failed to push dashboard update after 3 attempts"
+          exit 1
 
       # Always save the updated state file back to the cache, even if the
       # notify step failed — otherwise a transient API blip would cause us to
