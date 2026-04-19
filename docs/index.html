@@ -14,6 +14,7 @@
       --fg: #111827;
       --muted: #6b7280;
       --border: #e5e7eb;
+      --axis: #d1d5db;
       --ok: #10b981;
       --warn: #f59e0b;
       --crit: #ef4444;
@@ -26,6 +27,7 @@
         --fg: #f3f4f6;
         --muted: #9ca3af;
         --border: #2a2f3a;
+        --axis: #3a4050;
         --spark: #60a5fa;
       }
     }
@@ -84,20 +86,26 @@
     }
     .device {
       display: grid;
-      grid-template-columns: 1fr auto auto 72px;
-      align-items: center;
-      gap: 0.625rem;
-      padding: 0.625rem 0;
+      grid-template-columns: 1fr auto auto;
+      align-items: start;
+      gap: 0.75rem;
+      padding: 0.75rem 0;
       border-top: 1px solid var(--border);
     }
-    .device:first-of-type { border-top: none; padding-top: 0.25rem; }
+    .device:first-of-type { border-top: none; padding-top: 0.375rem; }
     .device-name { font-weight: 500; font-size: 0.9375rem; }
     .device-detail {
       color: var(--muted);
       font-size: 0.8125rem;
       margin-top: 0.125rem;
     }
+    /* Each temp cell: value row on top, two sparkline rows (24h, 7d) below. */
     .temp {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3125rem;
+    }
+    .temp-top {
       font-variant-numeric: tabular-nums;
       text-align: right;
       white-space: nowrap;
@@ -112,26 +120,45 @@
       margin-bottom: 0.0625rem;
     }
     .temp-value { font-weight: 600; font-size: 1rem; }
-    /* SET is the value he cares about most — boxed for emphasis. */
-    .temp-set {
+    /* SET is the primary signal — boxed value for emphasis. */
+    .temp-set .temp-top {
       background: rgba(0, 0, 0, 0.035);
       border: 1px solid var(--border);
       border-radius: 6px;
     }
     .temp-set .temp-value { color: var(--fg); }
-    /* NOW is secondary — plain cell with a vertical divider separating it
-       from SET; dimmed color unless out of spec. */
+    /* NOW is secondary — vertical divider + dimmed unless out of spec. */
     .temp-now {
-      border-left: 1px solid var(--border);
       padding-left: 0.875rem;
+      border-left: 1px solid var(--border);
     }
     .temp-now .temp-value { color: var(--muted); }
     .device-status-warn .temp-now .temp-value { color: var(--warn); }
     .device-status-crit .temp-now .temp-value { color: var(--crit); }
     @media (prefers-color-scheme: dark) {
-      .temp-set { background: rgba(255, 255, 255, 0.045); }
+      .temp-set .temp-top { background: rgba(255, 255, 255, 0.045); }
     }
-    .spark { height: 28px; width: 72px; display: block; }
+    /* Sparkline row: "24H" / "7D" timeframe label + the SVG chart. */
+    .spark-row {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.375rem;
+    }
+    .spark-timeframe {
+      color: var(--muted);
+      font-size: 0.625rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-variant-numeric: tabular-nums;
+      width: 20px;
+      text-align: right;
+    }
+    .spark {
+      height: 22px;
+      width: 80px;
+      display: block;
+    }
     .error {
       color: var(--crit);
       font-size: 0.875rem;
@@ -151,8 +178,11 @@
     }
     footer a { color: inherit; }
     @media (max-width: 480px) {
-      .device { grid-template-columns: 1fr auto auto; gap: 0.75rem; }
-      .spark { display: none; }
+      .device { gap: 0.5rem; padding: 0.625rem 0; }
+      .spark { width: 54px; }
+      .spark-timeframe { width: 18px; }
+      .temp-top { padding: 0.25rem 0.4375rem; }
+      .temp-now { padding-left: 0.5rem; }
     }
   </style>
 </head>
@@ -199,12 +229,14 @@
       content.innerHTML = "";
 
       const systems = (data.current && data.current.systems) || [];
+      const hourly  = data.history_hourly || [];
+      const daily   = data.history_daily  || [];
       for (const sys of systems) {
-        content.appendChild(renderSystem(sys, data.history || []));
+        content.appendChild(renderSystem(sys, hourly, daily));
       }
     }
 
-    function renderSystem(sys, history) {
+    function renderSystem(sys, hourly, daily) {
       const card = document.createElement("div");
       card.className = "card";
 
@@ -227,12 +259,12 @@
       }
 
       for (const dev of sys.devices || []) {
-        card.appendChild(renderDevice(sys.system, dev, history));
+        card.appendChild(renderDevice(sys.system, dev, hourly, daily));
       }
       return card;
     }
 
-    function renderDevice(systemName, dev, history) {
+    function renderDevice(systemName, dev, hourly, daily) {
       const row = document.createElement("div");
       const status = dev.status || "ok";
       row.className = "device device-status-" + status;
@@ -249,59 +281,108 @@
       info.appendChild(detailEl);
       row.appendChild(info);
 
-      // Column 2: SET — the primary signal (what Daniel cares about most)
-      row.appendChild(tempCell("set", "temp-set", dev.setpoint_f));
-      // Column 3: NOW — secondary; dimmed unless out of spec
-      row.appendChild(tempCell("now", "temp-now", dev.current_f));
-      // Column 4: sparkline of "now" over the last 24h
-      row.appendChild(sparkline(history, systemName + ":" + dev.name));
+      const key = systemName + ":" + dev.name;
+      // Column 2: SET value + its two sparklines
+      row.appendChild(tempColumn("set", "temp-set", dev.setpoint_f, hourly, daily, key, "set"));
+      // Column 3: NOW value + its two sparklines
+      row.appendChild(tempColumn("now", "temp-now", dev.current_f, hourly, daily, key, "now"));
       return row;
     }
 
-    function tempCell(label, modClass, value) {
+    function tempColumn(label, modClass, value, hourly, daily, key, field) {
       const cell = document.createElement("div");
       cell.className = "temp " + modClass;
+
+      // Top: label + current value (boxed for SET, divider for NOW).
+      const top = document.createElement("div");
+      top.className = "temp-top";
       const lab = document.createElement("span");
       lab.className = "temp-label";
       lab.textContent = label;
       const val = document.createElement("span");
       val.className = "temp-value";
       val.textContent = formatTemp(value);
-      cell.appendChild(lab);
-      cell.appendChild(val);
+      top.appendChild(lab);
+      top.appendChild(val);
+      cell.appendChild(top);
+
+      // Two stacked sparklines: 24h (hourly cadence), 7d (daily cadence).
+      cell.appendChild(sparkRow("24h", hourly, key, field));
+      cell.appendChild(sparkRow("7d",  daily,  key, field));
       return cell;
     }
 
+    function sparkRow(label, history, key, field) {
+      const row = document.createElement("div");
+      row.className = "spark-row";
+      const lab = document.createElement("span");
+      lab.className = "spark-timeframe";
+      lab.textContent = label;
+      row.appendChild(lab);
+      row.appendChild(sparkline(history, key, field));
+      return row;
+    }
+
     function buildDetail(dev) {
-      // Setpoint now has its own column — keep only the qualitative bits here.
+      // Setpoint has its own column — keep only the qualitative bits here.
       const parts = [];
       if (dev.mode) parts.push(dev.mode);
       if (dev.reason) parts.push(dev.reason);
       return parts.join(" · ");
     }
 
-    function sparkline(history, key) {
+    // SVG chart, drawn inline. What we render:
+    //   - Y-axis (left) and X-axis (bottom) as thin --axis lines — the "frame"
+    //     Daniel asked for, so it reads as a chart instead of a bare squiggle.
+    //   - Dashed horizontal reference line at the mean of the window.
+    //   - Data line in --spark.
+    //   - Filled dot at the most recent point so "now" is obvious.
+    //
+    // Y-scale is auto-ranged to the window's min/max — shapes are relative,
+    // not absolute, so a small wobble can look as big as a big swing.
+    function sparkline(history, key, field) {
+      const W = 80, H = 22;
+      const padL = 3, padR = 2, padT = 3, padB = 3;
+      const plotW = W - padL - padR;
+      const plotH = H - padT - padB;
+
       const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       svg.setAttribute("class", "spark");
-      svg.setAttribute("viewBox", "0 0 72 28");
+      svg.setAttribute("viewBox", "0 0 " + W + " " + H);
       svg.setAttribute("preserveAspectRatio", "none");
 
-      // Pull this device's readings out of each history entry. Skip nulls
-      // (the device might've been offline for some hours).
+      // Axis frame first so the data line draws on top of it.
+      const yAxis = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      yAxis.setAttribute("x1", padL); yAxis.setAttribute("x2", padL);
+      yAxis.setAttribute("y1", padT); yAxis.setAttribute("y2", H - padB);
+      yAxis.setAttribute("stroke", "var(--axis)");
+      yAxis.setAttribute("stroke-width", "0.6");
+      svg.appendChild(yAxis);
+      const xAxis = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      xAxis.setAttribute("x1", padL);   xAxis.setAttribute("x2", W - padR);
+      xAxis.setAttribute("y1", H - padB); xAxis.setAttribute("y2", H - padB);
+      xAxis.setAttribute("stroke", "var(--axis)");
+      xAxis.setAttribute("stroke-width", "0.6");
+      svg.appendChild(xAxis);
+
+      // Collect this device's field values across the given history window.
+      // Skip nulls (device offline for that window).
       const points = [];
       for (const h of history) {
-        const v = h.readings && h.readings[key];
+        const r = h.readings && h.readings[key];
+        if (!r) continue;
+        const v = r[field];
         if (v != null) points.push(v);
       }
 
-      if (points.length < 2) {
+      if (points.length === 0) {
         const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        text.setAttribute("x", "36");
-        text.setAttribute("y", "19");
+        text.setAttribute("x", (W / 2).toString());
+        text.setAttribute("y", (H / 2 + 3).toString());
         text.setAttribute("text-anchor", "middle");
         text.setAttribute("fill", "currentColor");
         text.setAttribute("opacity", "0.35");
-        text.setAttribute("font-size", "10");
+        text.setAttribute("font-size", "8");
         text.textContent = "—";
         svg.appendChild(text);
         return svg;
@@ -310,32 +391,59 @@
       const min = Math.min(...points);
       const max = Math.max(...points);
       const range = max - min || 1;
-      const step = 72 / (points.length - 1);
 
-      let d = "";
-      for (let i = 0; i < points.length; i++) {
-        const x = i * step;
-        // Leave 3px padding top/bottom so the line doesn't clip the SVG edges.
-        const y = 25 - ((points[i] - min) / range) * 22;
-        d += (i === 0 ? "M" : "L") + x.toFixed(1) + "," + y.toFixed(1);
+      // Dashed midline at the mean of this window — lets you see at a glance
+      // which points are above/below average.
+      if (points.length >= 2) {
+        const mean = points.reduce((a, b) => a + b, 0) / points.length;
+        const meanY = padT + plotH - ((mean - min) / range) * plotH;
+        const ml = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        ml.setAttribute("x1", padL);
+        ml.setAttribute("x2", W - padR);
+        ml.setAttribute("y1", meanY.toFixed(1));
+        ml.setAttribute("y2", meanY.toFixed(1));
+        ml.setAttribute("stroke", "var(--axis)");
+        ml.setAttribute("stroke-width", "0.4");
+        ml.setAttribute("stroke-dasharray", "1.5,1.5");
+        svg.appendChild(ml);
       }
 
+      // Single-point window: just the dot centered in the frame.
+      if (points.length < 2) {
+        const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        dot.setAttribute("cx", ((padL + W - padR) / 2).toFixed(1));
+        dot.setAttribute("cy", ((padT + H - padB) / 2).toFixed(1));
+        dot.setAttribute("r", "1.5");
+        dot.setAttribute("fill", "var(--spark)");
+        svg.appendChild(dot);
+        return svg;
+      }
+
+      const step = plotW / (points.length - 1);
+      let d = "";
+      for (let i = 0; i < points.length; i++) {
+        const x = padL + i * step;
+        const y = padT + plotH - ((points[i] - min) / range) * plotH;
+        d += (i === 0 ? "M" : "L") + x.toFixed(1) + "," + y.toFixed(1);
+      }
       const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
       path.setAttribute("d", d);
       path.setAttribute("fill", "none");
       path.setAttribute("stroke", "var(--spark)");
-      path.setAttribute("stroke-width", "1.5");
+      path.setAttribute("stroke-width", "1.2");
       path.setAttribute("stroke-linecap", "round");
       path.setAttribute("stroke-linejoin", "round");
       svg.appendChild(path);
 
-      // Final-point dot so it's clear where "now" is.
-      const last = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      last.setAttribute("cx", (72).toFixed(1));
-      last.setAttribute("cy", (25 - ((points[points.length - 1] - min) / range) * 22).toFixed(1));
-      last.setAttribute("r", "1.75");
-      last.setAttribute("fill", "var(--spark)");
-      svg.appendChild(last);
+      // Last-point dot so "now" reads at a glance.
+      const lastX = padL + (points.length - 1) * step;
+      const lastY = padT + plotH - ((points[points.length - 1] - min) / range) * plotH;
+      const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      dot.setAttribute("cx", lastX.toFixed(1));
+      dot.setAttribute("cy", lastY.toFixed(1));
+      dot.setAttribute("r", "1.4");
+      dot.setAttribute("fill", "var(--spark)");
+      svg.appendChild(dot);
 
       return svg;
     }

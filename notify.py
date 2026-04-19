@@ -16,6 +16,9 @@ Reads from `.env` in the same folder:
     RESEND_API_KEY=re_...             # API key from resend.com dashboard
     NOTIFY_TO_EMAIL=danielgheller@gmail.com   # recipient (your Resend signup address)
     NOTIFY_FROM_EMAIL=Ptown Monitor <onboarding@resend.dev>   # optional override
+    DASHBOARD_URL=https://...         # optional; appended to email body as
+                                      # "Live dashboard: <url>". Defaults to
+                                      # the GH Pages URL below.
 
 Usage:
     ./ptown notify                      # send email if overall status is not OK
@@ -51,6 +54,9 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 RESEND_URL = "https://api.resend.com/emails"
 DEFAULT_FROM = "Ptown Monitor <onboarding@resend.dev>"
+# Where the live HTML dashboard is hosted. Can be overridden with
+# DASHBOARD_URL in .env (e.g. to point at a staging fork or localhost).
+DEFAULT_DASHBOARD_URL = "https://danielgheller.github.io/ptown-monitor/"
 DASHBOARD_TIMEOUT = 90
 STATE_FILE = HERE / "notify-state.json"
 
@@ -141,6 +147,13 @@ def _build_body(dashboard: dict) -> str:
     else:
         lines.append("CRITICAL: something is wrong (see above).")
     lines.append("")
+    # Link to the live GH Pages dashboard — gives 24h + 7d trend sparklines
+    # per device, which this text body intentionally doesn't try to render.
+    # Most mail clients (Gmail, Apple Mail) autolink plain-text URLs.
+    dashboard_url = (os.environ.get("DASHBOARD_URL") or DEFAULT_DASHBOARD_URL).strip()
+    if dashboard_url:
+        lines.append(f"Live dashboard: {dashboard_url}")
+        lines.append("")
     lines.append("— Ptown Monitor")
     return "\n".join(lines)
 
