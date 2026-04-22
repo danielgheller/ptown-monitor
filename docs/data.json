@@ -1,6 +1,6 @@
 {
   "current": {
-    "timestamp": "2026-04-22T21:08:28+0000",
+    "timestamp": "2026-04-22T22:02:33+0000",
     "overall_status": "ok",
     "systems": [
       {
@@ -21,7 +21,7 @@
           },
           {
             "name": "cabana floor",
-            "current_f": 57.2,
+            "current_f": 57.1,
             "setpoint_f": 41.0,
             "mode": "idle",
             "online": true,
@@ -31,7 +31,7 @@
           },
           {
             "name": "primary floor",
-            "current_f": 56.7,
+            "current_f": 56.6,
             "setpoint_f": 41.0,
             "mode": "idle",
             "online": true,
@@ -73,7 +73,7 @@
         "devices": [
           {
             "name": "Cabana",
-            "current_f": 60.3,
+            "current_f": 59.4,
             "setpoint_f": 59.7,
             "mode": "Eco manual_eco, HVAC off",
             "online": true,
@@ -90,12 +90,12 @@
           },
           {
             "name": "Primary Bedroom",
-            "current_f": 60.4,
+            "current_f": 59.7,
             "setpoint_f": 59.6,
             "mode": "Eco manual_eco, HVAC off",
             "online": true,
             "extra": {
-              "humidity": 42,
+              "humidity": 43,
               "hvac_status": "off",
               "thermostat_mode": "heat",
               "eco_mode": "manual_eco",
@@ -112,7 +112,7 @@
             "mode": "Eco manual_eco, HVAC off",
             "online": true,
             "extra": {
-              "humidity": 42,
+              "humidity": 44,
               "hvac_status": "off",
               "thermostat_mode": "heat",
               "eco_mode": "manual_eco",
@@ -127,39 +127,6 @@
     ]
   },
   "history_hourly": [
-    {
-      "timestamp": "2026-04-21T03:44:37+0000",
-      "readings": {
-        "nuheat:guest floor": {
-          "set": 41.0,
-          "now": 57.8
-        },
-        "nuheat:cabana floor": {
-          "set": 41.0,
-          "now": 56.4
-        },
-        "nuheat:primary floor": {
-          "set": 41.0,
-          "now": 57.0
-        },
-        "hottub:Jacuzzi J-335": {
-          "set": 64.9,
-          "now": 72.0
-        },
-        "nest:Cabana": {
-          "set": 59.7,
-          "now": 59.4
-        },
-        "nest:Primary Bedroom": {
-          "set": 59.6,
-          "now": 59.3
-        },
-        "nest:Kitchen": {
-          "set": 59.7,
-          "now": 60.5
-        }
-      }
-    },
     {
       "timestamp": "2026-04-21T06:13:06+0000",
       "readings": {
@@ -918,6 +885,39 @@
           "now": 60.4
         }
       }
+    },
+    {
+      "timestamp": "2026-04-22T22:02:33+0000",
+      "readings": {
+        "nuheat:guest floor": {
+          "set": 41.0,
+          "now": 57.6
+        },
+        "nuheat:cabana floor": {
+          "set": 41.0,
+          "now": 57.1
+        },
+        "nuheat:primary floor": {
+          "set": 41.0,
+          "now": 56.6
+        },
+        "hottub:Jacuzzi J-335": {
+          "set": 64.9,
+          "now": 68.0
+        },
+        "nest:Cabana": {
+          "set": 59.7,
+          "now": 59.4
+        },
+        "nest:Primary Bedroom": {
+          "set": 59.6,
+          "now": 59.7
+        },
+        "nest:Kitchen": {
+          "set": 59.7,
+          "now": 60.4
+        }
+      }
     }
   ],
   "history_daily": [
@@ -1025,7 +1025,7 @@
     },
     {
       "date": "2026-04-22",
-      "timestamp": "2026-04-22T21:08:28+0000",
+      "timestamp": "2026-04-22T22:02:33+0000",
       "readings": {
         "nuheat:guest floor": {
           "set": 41.0,
@@ -1033,11 +1033,11 @@
         },
         "nuheat:cabana floor": {
           "set": 41.0,
-          "now": 57.2
+          "now": 57.1
         },
         "nuheat:primary floor": {
           "set": 41.0,
-          "now": 56.7
+          "now": 56.6
         },
         "hottub:Jacuzzi J-335": {
           "set": 64.9,
@@ -1045,11 +1045,11 @@
         },
         "nest:Cabana": {
           "set": 59.7,
-          "now": 60.3
+          "now": 59.4
         },
         "nest:Primary Bedroom": {
           "set": 59.6,
-          "now": 60.4
+          "now": 59.7
         },
         "nest:Kitchen": {
           "set": 59.7,
@@ -1058,5 +1058,5 @@
       }
     }
   ],
-  "generated_at": "2026-04-22T21:08:28+0000"
+  "generated_at": "2026-04-22T22:02:33+0000"
 }
