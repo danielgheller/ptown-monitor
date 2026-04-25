@@ -1,6 +1,6 @@
 {
   "current": {
-    "timestamp": "2026-04-24T23:54:42+0000",
+    "timestamp": "2026-04-25T03:30:50+0000",
     "overall_status": "ok",
     "systems": [
       {
@@ -11,7 +11,7 @@
         "devices": [
           {
             "name": "guest floor",
-            "current_f": 60.0,
+            "current_f": 59.0,
             "setpoint_f": 41.0,
             "mode": "idle",
             "online": true,
@@ -31,7 +31,7 @@
           },
           {
             "name": "primary floor",
-            "current_f": 60.4,
+            "current_f": 60.2,
             "setpoint_f": 41.0,
             "mode": "idle",
             "online": true,
@@ -73,12 +73,12 @@
         "devices": [
           {
             "name": "Cabana",
-            "current_f": 59.5,
+            "current_f": 61.1,
             "setpoint_f": 59.7,
             "mode": "Eco manual_eco, HVAC off",
             "online": true,
             "extra": {
-              "humidity": 45,
+              "humidity": 44,
               "hvac_status": "off",
               "thermostat_mode": "heat",
               "eco_mode": "manual_eco",
@@ -90,7 +90,7 @@
           },
           {
             "name": "Primary Bedroom",
-            "current_f": 64.4,
+            "current_f": 62.4,
             "setpoint_f": 59.6,
             "mode": "Eco manual_eco, HVAC off",
             "online": true,
@@ -127,39 +127,6 @@
     ]
   },
   "history_hourly": [
-    {
-      "timestamp": "2026-04-23T12:07:44+0000",
-      "readings": {
-        "nuheat:guest floor": {
-          "set": 41.0,
-          "now": 56.5
-        },
-        "nuheat:cabana floor": {
-          "set": 41.0,
-          "now": 56.9
-        },
-        "nuheat:primary floor": {
-          "set": 41.0,
-          "now": 56.4
-        },
-        "hottub:Jacuzzi J-335": {
-          "set": 64.9,
-          "now": 66.9
-        },
-        "nest:Cabana": {
-          "set": 59.7,
-          "now": 59.4
-        },
-        "nest:Primary Bedroom": {
-          "set": 59.6,
-          "now": 59.3
-        },
-        "nest:Kitchen": {
-          "set": 59.7,
-          "now": 60.2
-        }
-      }
-    },
     {
       "timestamp": "2026-04-23T14:09:26+0000",
       "readings": {
@@ -918,6 +885,39 @@
           "now": 60.4
         }
       }
+    },
+    {
+      "timestamp": "2026-04-25T03:30:50+0000",
+      "readings": {
+        "nuheat:guest floor": {
+          "set": 41.0,
+          "now": 59.0
+        },
+        "nuheat:cabana floor": {
+          "set": 41.0,
+          "now": 55.7
+        },
+        "nuheat:primary floor": {
+          "set": 41.0,
+          "now": 60.2
+        },
+        "hottub:Jacuzzi J-335": {
+          "set": 64.9,
+          "now": 66.0
+        },
+        "nest:Cabana": {
+          "set": 59.7,
+          "now": 61.1
+        },
+        "nest:Primary Bedroom": {
+          "set": 59.6,
+          "now": 62.4
+        },
+        "nest:Kitchen": {
+          "set": 59.7,
+          "now": 60.4
+        }
+      }
     }
   ],
   "history_daily": [
@@ -1093,11 +1093,11 @@
     },
     {
       "date": "2026-04-24",
-      "timestamp": "2026-04-24T23:54:42+0000",
+      "timestamp": "2026-04-25T03:30:50+0000",
       "readings": {
         "nuheat:guest floor": {
           "set": 41.0,
-          "now": 60.0
+          "now": 59.0
         },
         "nuheat:cabana floor": {
           "set": 41.0,
@@ -1105,7 +1105,7 @@
         },
         "nuheat:primary floor": {
           "set": 41.0,
-          "now": 60.4
+          "now": 60.2
         },
         "hottub:Jacuzzi J-335": {
           "set": 64.9,
@@ -1113,11 +1113,11 @@
         },
         "nest:Cabana": {
           "set": 59.7,
-          "now": 59.5
+          "now": 61.1
         },
         "nest:Primary Bedroom": {
           "set": 59.6,
-          "now": 64.4
+          "now": 62.4
         },
         "nest:Kitchen": {
           "set": 59.7,
@@ -1126,5 +1126,5 @@
       }
     }
   ],
-  "generated_at": "2026-04-24T23:54:42+0000"
+  "generated_at": "2026-04-25T03:30:51+0000"
 }
