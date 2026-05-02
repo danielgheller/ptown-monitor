@@ -76,23 +76,41 @@ jobs:
           NEST_REFRESH_TOKEN: ${{ secrets.NEST_REFRESH_TOKEN }}
           RESEND_API_KEY:     ${{ secrets.RESEND_API_KEY }}
           NOTIFY_TO_EMAIL:    ${{ secrets.NOTIFY_TO_EMAIL }}
+        # IMPORTANT: GH runs this with `bash -e {0}` by default, so any
+        # non-zero exit aborts the step. dashboard.py uses its exit code to
+        # COMMUNICATE STATUS (0=ok, 1=warn, 2=crit) — those are not script
+        # failures, they're the entire point of running. Override the shell
+        # to plain bash and gate failures explicitly so a CRIT reading still
+        # flows through to notify.py and build_site.py. (Without this, the
+        # one hour you most want an alert is the one that fails to send it.)
+        shell: bash {0}
         run: |
-          set -e
-          # Single source of truth for this run's readings.
+          # Run dashboard.py and capture its exit (status code, NOT failure).
           python dashboard.py --json > /tmp/dashboard.json
+          dash_exit=$?
+          if [ ! -s /tmp/dashboard.json ]; then
+            echo "::error::dashboard.py produced no output (exit=$dash_exit)"
+            exit 1
+          fi
+          echo "dashboard.py exit=$dash_exit (0=ok 1=warn 2=crit) — proceeding"
 
           # notify.py failure must NOT prevent the dashboard update — e.g. if
           # Resend is rate-limited or down, the HTML dashboard is still the
           # fastest way for Daniel to check status, and we don't want to skip it.
-          set +e
           python notify.py --stdin --on-change-only < /tmp/dashboard.json
           notify_exit=$?
-          set -e
           if [ $notify_exit -ne 0 ]; then
             echo "::warning::notify.py exited with code $notify_exit (continuing to site build)"
           fi
 
+          # build_site.py is the one step we DO want to fail the workflow on,
+          # since a broken docs/data.json would freeze the live dashboard.
           python build_site.py --stdin < /tmp/dashboard.json
+          build_exit=$?
+          if [ $build_exit -ne 0 ]; then
+            echo "::error::build_site.py exited with code $build_exit"
+            exit $build_exit
+          fi
 
       # Commit the refreshed dashboard. We only commit if docs/ actually
       # changed — usually data.json changes every run (new reading appended to

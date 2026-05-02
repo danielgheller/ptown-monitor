@@ -88,20 +88,98 @@ STATUS_PREFIX = {
 }
 
 
+_SYSTEM_SHORT = {"nuheat": "floors", "hottub": "tub", "nest": "indoor"}
+
+
+def _bad_device_summary(sys_result: dict) -> str | None:
+    """Build a short subject-line fragment for a non-OK system.
+
+    Picks the worst-status device and pulls its current temp + watercare-style
+    context so Daniel can decide from his lock screen whether to act. Examples:
+      "tub 104°F (away)", "floor 33°F", "Cabana 38°F"
+    Returns None if nothing useful can be summarized.
+    """
+    devices = sys_result.get("devices") or []
+    if not devices:
+        return None
+    sev = {"ok": 0, "warn": 1, "crit": 2}
+    bad = [d for d in devices if d.get("status") in ("warn", "crit")]
+    if not bad:
+        return None
+    bad.sort(key=lambda d: sev.get(d.get("status", "ok"), 0), reverse=True)
+    dev = bad[0]
+    system = sys_result.get("system", "?")
+    cur = dev.get("current_f")
+    # Offline / no-reading case: prefer the human reason over a literal "?"
+    if not isinstance(cur, (int, float)):
+        if not dev.get("online", True):
+            return f"{_SYSTEM_SHORT.get(system, system)} offline"
+        return f"{_SYSTEM_SHORT.get(system, system)} no reading"
+    cur_s = f"{cur:.0f}°F"
+    if system == "hottub":
+        # Tub uses watercare ("away_from_home", "ready", etc.) — surface it so
+        # "tub 104°F" vs "tub 104°F (away)" tells different stories at a glance.
+        watercare = ((dev.get("extra") or {}).get("watercare") or "").lower()
+        suffix = " (away)" if watercare == "away_from_home" else ""
+        return f"tub {cur_s}{suffix}"
+    if system == "nuheat":
+        # Floors all named "<x> floor" — drop the "floor" suffix to save chars.
+        name = (dev.get("name") or "floor").replace(" floor", "")
+        return f"{name} floor {cur_s}"
+    if system == "nest":
+        return f"{dev.get('name', 'indoor')} {cur_s}"
+    return f"{_SYSTEM_SHORT.get(system, system)} {cur_s}"
+
+
+def _hottub_summary(dashboard: dict) -> str | None:
+    """Pull just the hot tub water temp for the daily-OK subject line.
+
+    The whole point of the daily email is reassurance — Daniel cares about
+    cost, and the tub is the costliest device, so showing its current water
+    temp at a glance answers the actual question ("am I paying to heat it?").
+    """
+    for sys_result in dashboard.get("systems", []):
+        if sys_result.get("system") != "hottub":
+            continue
+        devices = sys_result.get("devices") or []
+        if not devices:
+            return None
+        cur = devices[0].get("current_f")
+        if isinstance(cur, (int, float)):
+            return f"tub {cur:.0f}°F"
+    return None
+
+
 def _build_subject(dashboard: dict, *, is_daily: bool) -> str:
     status = dashboard.get("overall_status", "ok")
     prefix = STATUS_PREFIX.get(status, "Ptown")
     if is_daily:
         prefix += " — daily"
-    # Append short system hint for at-a-glance triage in iOS notifications.
+    # For non-OK runs: surface the offending devices' temps so the subject
+    # line is enough on its own to triage from a lock screen / notification
+    # ("⚠️ Ptown WARN — tub 104°F (away)" tells Daniel exactly what's up).
     if status != "ok":
-        bad_systems = [
-            s["system"]
+        fragments = [
+            frag
             for s in dashboard.get("systems", [])
             if s.get("overall_status") != "ok"
+            for frag in [_bad_device_summary(s)]
+            if frag
         ]
-        if bad_systems:
-            prefix += f" — {', '.join(bad_systems)}"
+        if fragments:
+            prefix += f" — {', '.join(fragments)}"
+        else:
+            # Fallback to the system name if we couldn't extract a temp.
+            bad = [s["system"] for s in dashboard.get("systems", [])
+                   if s.get("overall_status") != "ok"]
+            if bad:
+                prefix += f" — {', '.join(bad)}"
+    elif is_daily:
+        # Daily OK: append tub water temp so Daniel sees at a glance whether
+        # he's paying to heat the (supposedly empty) tub.
+        tub = _hottub_summary(dashboard)
+        if tub:
+            prefix += f" — {tub}"
     # Date suffix on daily summaries so the archive is easy to scan by month
     # ("did I get my April 18 summary?") and so two same-day emails aren't
     # indistinguishable in a long thread.

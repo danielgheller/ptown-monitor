@@ -51,6 +51,14 @@ FLOOR_MIN_OK_F = 35.0
 # the heater isn't keeping up. (Allows some drift in away-mode.)
 HOTTUB_MAX_UNDERSHOOT_F = 8.0
 
+# Hot tub: if we're in away_from_home watercare AND the water is above this,
+# something is heating the tub when it shouldn't be — could be an unauthorized
+# setpoint change or a power surge resetting to factory-default 104°F. Either
+# way, Daniel is paying for electricity he doesn't want to pay for, so warn.
+# Threshold is comfortably above ambient drift (60–65°F summer, lower winter)
+# but well below normal use temperatures (~100°F+).
+HOTTUB_AWAY_MAX_F = 70.0
+
 
 # ---------- status labels ----------
 class Status:
@@ -116,7 +124,26 @@ def _evaluate_hottub(device: dict) -> tuple[str, str | None]:
     setp = device.get("setpoint_f")
     if cur is None:
         return Status.WARN, "no water temp reading"
-    if cur is not None and setp is not None and (setp - cur) > HOTTUB_MAX_UNDERSHOOT_F:
+    watercare = (extra.get("watercare") or "").lower()
+    # Cost-protection branch: when the tub is supposed to be unattended
+    # (watercare = away_from_home) but the water is warm OR the setpoint has
+    # been moved up, someone or something has cranked it up — could be an
+    # unauthorized change or a power surge resetting to factory-default 104°F.
+    # Don't gate on heater=off; the harm has already happened (you paid to
+    # heat it) and the tub may hold near setpoint with brief heater bursts
+    # that fall between hourly polls. Two checks, water first because that's
+    # the actual cost; setpoint second to catch the early window before the
+    # water has finished heating.
+    if watercare == "away_from_home":
+        if cur > HOTTUB_AWAY_MAX_F:
+            return Status.WARN, f"water {cur:.1f}°F while away — heater bumped?"
+        if setp is not None and setp > HOTTUB_AWAY_MAX_F:
+            return Status.WARN, f"setpoint {setp:.1f}°F while away — heater bumped?"
+        # Skip the undershoot check while away — a high setpoint that the
+        # user clearly isn't trying to maintain (heater off, away mode) would
+        # otherwise produce a misleading "20°F below setpoint" warning.
+        return Status.OK, None
+    if setp is not None and (setp - cur) > HOTTUB_MAX_UNDERSHOOT_F:
         return Status.WARN, f"water {cur:.1f}°F is {setp - cur:.1f}°F below setpoint"
     return Status.OK, None
 
