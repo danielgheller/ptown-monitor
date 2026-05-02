@@ -41,6 +41,30 @@ Example output:
       cabana floor                 now  58.1°F   set  41.0°F   idle     online
       primary floor                now  64.2°F   set  41.0°F   idle     online
 
+## "In Ptown" toggle (cost-protection alerts)
+
+The dashboard adds **warn-when-warm** rules whenever Daniel is *not* at the
+house — floor setpoint > 41°F, Nest setpoint > 60°F, or hot tub water/setpoint
+> 65°F all trip a WARN. Catches an unauthorized bump or a power-surge
+factory-reset to 104°F. The toggle is a single file at the repo root named
+`IN_PTOWN`:
+
+- **File EXISTS**: Daniel is in Ptown → cost-protection rules **OFF** (he's
+  allowed to crank the heat).
+- **File ABSENT**: Daniel is away from Ptown → cost-protection rules **ON**.
+
+Default-absent means a forgotten toggle errs on the alerting side. Toggle it
+from the GitHub web UI (or via a one-tap link in any monitor email):
+
+- **Arriving in Ptown**: "Add file" → "Create new file" → name `IN_PTOWN` →
+  empty body → commit. Cost-protection rules go silent immediately.
+- **Leaving Ptown**: navigate to the `IN_PTOWN` file → trash icon → commit.
+  Cost-protection rules go live on the next hourly run.
+
+The freeze-protect / pipe-risk alerts (RED if a floor < 35°F or a Nest < 40°F)
+run all the time regardless of the toggle — those are about preventing damage,
+not waste.
+
 ## Notes
 
 - `nuheat.py` is stdlib-only. `hottub.py` uses `python-smarttub` +

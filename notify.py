@@ -66,6 +66,27 @@ DEFAULT_DASHBOARD_URL = "https://danielgheller.github.io/ptown-monitor/"
 DASHBOARD_TIMEOUT = 90
 STATE_FILE = HERE / "notify-state.json"
 
+# Repo URL is the base for one-tap toggle links in the email — GitHub's
+# /new and /delete URL patterns deep-link straight to the create-file or
+# delete-file UI on github.com mobile/web. Two taps from the email: tap
+# link → GH UI loads → tap "Commit changes." Override via REPO_URL in .env
+# if you ever fork.
+DEFAULT_REPO_URL = "https://github.com/danielgheller/ptown-monitor"
+IN_PTOWN_FILE = "IN_PTOWN"
+
+# Setpoint-burst nudge thresholds. We compare each device's setpoint against
+# the value from the previous run; if MIN_BURST_DEVICES or more changed by
+# more than BURST_DELTA_F, the email surfaces a "did you arrive?" banner.
+# 0.5°F filters out Nest's tiny eco-mode oscillation; 2 devices keeps
+# scheduled single-thermostat changes from triggering.
+BURST_DELTA_F = 0.5
+MIN_BURST_DEVICES = 2
+
+# Stale-state reminder: if the IN_PTOWN file hasn't flipped in this many days,
+# every daily email gets a "still in/away from Ptown?" line with a one-tap
+# toggle. Picked 30 to roughly match a long-but-not-snowbird absence.
+STALE_REMINDER_DAYS = 30
+
 
 # ---------- tiny .env loader ----------
 def _load_env(path: Path) -> None:
@@ -106,7 +127,16 @@ def _bad_device_summary(sys_result: dict) -> str | None:
     bad = [d for d in devices if d.get("status") in ("warn", "crit")]
     if not bad:
         return None
-    bad.sort(key=lambda d: sev.get(d.get("status", "ok"), 0), reverse=True)
+    # Sort: highest severity first, then highest current temp first. The temp
+    # tiebreaker matters when several devices are all WARN — show the warmest
+    # one, since that's the worst offender.
+    bad.sort(
+        key=lambda d: (
+            sev.get(d.get("status", "ok"), 0),
+            d.get("current_f") if isinstance(d.get("current_f"), (int, float)) else -999,
+        ),
+        reverse=True,
+    )
     dev = bad[0]
     system = sys_result.get("system", "?")
     cur = dev.get("current_f")
@@ -131,23 +161,32 @@ def _bad_device_summary(sys_result: dict) -> str | None:
     return f"{_SYSTEM_SHORT.get(system, system)} {cur_s}"
 
 
-def _hottub_summary(dashboard: dict) -> str | None:
-    """Pull just the hot tub water temp for the daily-OK subject line.
+def _all_temps_summary(dashboard: dict) -> str | None:
+    """Compact temp digest for the daily-OK subject — every device, in one line.
 
-    The whole point of the daily email is reassurance — Daniel cares about
-    cost, and the tub is the costliest device, so showing its current water
-    temp at a glance answers the actual question ("am I paying to heat it?").
+    Format: "tub 65°F · floors 41/41/41°F · indoor 60/60/65°F". Picks current
+    temps (NOT setpoints) since the daily email's job is to confirm the actual
+    state of the house. Slashes between sibling devices keep it tight enough
+    to fit in a Gmail/iOS subject line preview without truncation.
     """
+    parts: list[str] = []
     for sys_result in dashboard.get("systems", []):
-        if sys_result.get("system") != "hottub":
-            continue
+        system = sys_result.get("system")
         devices = sys_result.get("devices") or []
-        if not devices:
-            return None
-        cur = devices[0].get("current_f")
-        if isinstance(cur, (int, float)):
-            return f"tub {cur:.0f}°F"
-    return None
+        temps = [
+            d.get("current_f")
+            for d in devices
+            if isinstance(d.get("current_f"), (int, float))
+        ]
+        if not temps:
+            continue
+        if system == "hottub":
+            parts.append(f"tub {temps[0]:.0f}°F")
+        elif system == "nuheat":
+            parts.append("floors " + "/".join(f"{t:.0f}" for t in temps) + "°F")
+        elif system == "nest":
+            parts.append("indoor " + "/".join(f"{t:.0f}" for t in temps) + "°F")
+    return " · ".join(parts) if parts else None
 
 
 def _build_subject(dashboard: dict, *, is_daily: bool) -> str:
@@ -175,11 +214,12 @@ def _build_subject(dashboard: dict, *, is_daily: bool) -> str:
             if bad:
                 prefix += f" — {', '.join(bad)}"
     elif is_daily:
-        # Daily OK: append tub water temp so Daniel sees at a glance whether
-        # he's paying to heat the (supposedly empty) tub.
-        tub = _hottub_summary(dashboard)
-        if tub:
-            prefix += f" — {tub}"
+        # Daily OK: append every device's current temp so the morning glance
+        # answers "am I paying to heat anything I shouldn't be?" all in one
+        # line, without opening the email.
+        digest = _all_temps_summary(dashboard)
+        if digest:
+            prefix += f" — {digest}"
     # Date suffix on daily summaries so the archive is easy to scan by month
     # ("did I get my April 18 summary?") and so two same-day emails aren't
     # indistinguishable in a long thread.
@@ -188,7 +228,7 @@ def _build_subject(dashboard: dict, *, is_daily: bool) -> str:
     return prefix
 
 
-def _build_body(dashboard: dict) -> str:
+def _build_body(dashboard: dict, *, ctx: dict) -> str:
     """Turn the JSON dashboard into a plain-text email body.
 
     We render the same shape dashboard.py does when invoked without --json,
@@ -196,6 +236,22 @@ def _build_body(dashboard: dict) -> str:
     garble them — plain ASCII is safest).
     """
     lines = [f"Ptown status — {dashboard.get('timestamp', time.strftime('%Y-%m-%dT%H:%M:%S%z'))}", ""]
+    # Top-of-body location + toggle. Plain text just shows the URL — the HTML
+    # version turns this into a button.
+    location = "in Ptown" if ctx["in_ptown"] else "away from Ptown"
+    lines.append(f"Mode: {location} (cost-protection {'OFF' if ctx['in_ptown'] else 'ON'})")
+    lines.append(f"Flip: {ctx['toggle_label']} → {ctx['toggle_url']}")
+    lines.append("")
+    if ctx["burst_nudge"]:
+        lines.append("Setpoints just changed: " + ", ".join(ctx["burst_changes"]))
+        lines.append("Did you arrive? Tap the link above to flip the toggle.")
+        lines.append("")
+    if ctx["stale_nudge"]:
+        lines.append(
+            f"Heads up: it's been {ctx['stale_days']} days since you flipped "
+            f"the toggle. Still {location}? Tap the link above to confirm."
+        )
+        lines.append("")
     tag = {"ok": "[ OK ]", "warn": "[WARN]", "crit": "[CRIT]"}
 
     for sys_result in dashboard.get("systems", []):
@@ -259,7 +315,7 @@ def _fmt_f(v) -> str:
     return f"{v:.1f}°F" if v is not None else "—"
 
 
-def _build_html_body(dashboard: dict, dashboard_url: str) -> str:
+def _build_html_body(dashboard: dict, dashboard_url: str, *, ctx: dict) -> str:
     """Render an HTML email body that mirrors the web dashboard's card layout.
 
     Uses table-based layout with inline styles for maximum email-client
@@ -298,6 +354,65 @@ def _build_html_body(dashboard: dict, dashboard_url: str) -> str:
         f'border-radius:999px;">{ov["label"]}</span>'
         '</td></tr></table>'
     )
+
+    # Toggle button — top of email, always visible. State-aware: when in
+    # Ptown, the button takes you to delete IN_PTOWN ("leaving"); when away,
+    # to create it ("arriving"). Mode line above keeps the current state
+    # legible without needing to read the button verb.
+    location_label = "In Ptown" if ctx["in_ptown"] else "Away from Ptown"
+    location_sub = (
+        "Cost-protection OFF — you can crank everything up."
+        if ctx["in_ptown"]
+        else "Cost-protection ON — alerting on bumped setpoints."
+    )
+    safe_toggle_url = html.escape(ctx["toggle_url"], quote=True)
+    parts.append(
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
+        'style="border-collapse:collapse;background:#f3f4f6;border:1px solid #e5e7eb;'
+        'border-radius:10px;padding:10px 14px;margin-bottom:10px;">'
+        '<tr>'
+        '<td align="left" style="vertical-align:middle;">'
+        f'<div style="font-size:13px;font-weight:600;color:#111827;">{location_label}</div>'
+        f'<div style="font-size:11px;color:#6b7280;margin-top:2px;">{location_sub}</div>'
+        '</td>'
+        '<td align="right" style="vertical-align:middle;padding-left:8px;">'
+        f'<a href="{safe_toggle_url}" style="display:inline-block;background:#111827;'
+        'color:#ffffff;text-decoration:none;font-size:12px;font-weight:600;'
+        'padding:8px 14px;border-radius:8px;white-space:nowrap;">'
+        f'{html.escape(ctx["toggle_label"])}</a>'
+        '</td></tr></table>'
+    )
+
+    # Setpoint-burst nudge — yellow banner, only when we suspect Daniel just
+    # arrived (multiple setpoints jumped AND he's currently flagged "away").
+    if ctx["burst_nudge"]:
+        changes_text = html.escape(", ".join(ctx["burst_changes"]))
+        parts.append(
+            '<div style="background:#fef3c7;border:1px solid #fde68a;'
+            'border-radius:10px;padding:10px 14px;margin-bottom:10px;'
+            'font-size:13px;color:#92400e;">'
+            f'<div style="font-weight:600;margin-bottom:2px;">Did you just arrive?</div>'
+            f'<div style="color:#78350f;">Setpoints jumped: {changes_text}. '
+            'Tap the toggle above to switch into "in Ptown" mode.</div>'
+            '</div>'
+        )
+
+    # Stale-state nudge — same yellow banner, only on daily emails when it's
+    # been STALE_REMINDER_DAYS+ since the last toggle flip.
+    if ctx["stale_nudge"]:
+        days = ctx["stale_days"]
+        question = (
+            "Still in Ptown?" if ctx["in_ptown"] else "Still away from Ptown?"
+        )
+        parts.append(
+            '<div style="background:#fef3c7;border:1px solid #fde68a;'
+            'border-radius:10px;padding:10px 14px;margin-bottom:10px;'
+            'font-size:13px;color:#92400e;">'
+            f'<div style="font-weight:600;margin-bottom:2px;">{question}</div>'
+            f'<div style="color:#78350f;">It\'s been {days} days since the '
+            'toggle was flipped. Tap the button above to confirm or change.</div>'
+            '</div>'
+        )
 
     # System cards
     for sys_result in dashboard.get("systems", []):
@@ -443,9 +558,95 @@ def _send_resend(api_key: str, from_addr: str, to_addr: str,
         raise RuntimeError(f"Resend HTTP {e.code}: {body}") from e
 
 
+# ---------- toggle URL helpers ----------
+def _repo_url() -> str:
+    return (os.environ.get("REPO_URL") or DEFAULT_REPO_URL).strip().rstrip("/")
+
+
+def _toggle_url(in_ptown: bool) -> str:
+    """One-tap link that opens GitHub's create-file or delete-file UI on
+    mobile/web. User taps 'Commit changes' on the resulting page to flip.
+
+    - in Ptown → next action is "leaving" → delete the file
+    - away   → next action is "arriving" → create the file
+    """
+    if in_ptown:
+        return f"{_repo_url()}/delete/main/{IN_PTOWN_FILE}"
+    return f"{_repo_url()}/new/main?filename={IN_PTOWN_FILE}"
+
+
+def _toggle_label(in_ptown: bool) -> str:
+    """Verb tense matches the user's NEXT action, not their current state."""
+    return "✈️ I'm leaving Ptown" if in_ptown else "🏠 I'm in Ptown now"
+
+
+# ---------- setpoint flattening + burst detection ----------
+def _extract_setpoints(dashboard: dict) -> dict:
+    """Flatten dashboard setpoints to {'<system>:<device>': setpoint_f}."""
+    out: dict = {}
+    for sys_result in dashboard.get("systems", []):
+        system = sys_result.get("system", "?")
+        for dev in sys_result.get("devices", []) or []:
+            setp = dev.get("setpoint_f")
+            if isinstance(setp, (int, float)):
+                out[f"{system}:{dev.get('name', '?')}"] = round(setp, 1)
+    return out
+
+
+def _detect_setpoint_burst(current: dict, previous: dict | None) -> list[str]:
+    """Return human-readable change strings if MIN_BURST_DEVICES+ setpoints
+    moved by more than BURST_DELTA_F since the previous run. Returns [] if
+    no prior state, no qualifying changes, or fewer than the threshold."""
+    if not previous:
+        return []
+    changes: list[str] = []
+    for key, cur in current.items():
+        prev = previous.get(key)
+        if not isinstance(prev, (int, float)):
+            continue
+        if abs(cur - prev) > BURST_DELTA_F:
+            # "system:Cabana 60.0→64.0" → friendlier "Cabana 60→64°F"
+            label = key.split(":", 1)[-1]
+            changes.append(f"{label} {prev:.0f}→{cur:.0f}°F")
+    if len(changes) < MIN_BURST_DEVICES:
+        return []
+    return changes
+
+
+# ---------- stale-state computation ----------
+def _parse_iso(ts: str | None) -> float | None:
+    """Parse the ISO8601 stamp we write to the state file → epoch seconds."""
+    if not ts:
+        return None
+    try:
+        # Tolerate both "2026-05-02T22:00:00+0000" (no colon) and
+        # "2026-05-02T22:00:00+00:00" by inserting the colon if needed.
+        normalized = ts
+        if len(ts) >= 5 and (ts[-5] in "+-") and ts[-3] != ":":
+            normalized = ts[:-2] + ":" + ts[-2:]
+        return time.mktime(time.strptime(normalized[:19], "%Y-%m-%dT%H:%M:%S"))
+    except Exception:
+        return None
+
+
+def _stale_days(in_ptown_changed_at: str | None) -> int:
+    """How many whole days since IN_PTOWN was last flipped. 0 if unknown."""
+    epoch = _parse_iso(in_ptown_changed_at)
+    if epoch is None:
+        return 0
+    seconds = max(0.0, time.time() - epoch)
+    return int(seconds // 86400)
+
+
 # ---------- state tracking (for --on-change-only) ----------
 def _current_state(dashboard: dict) -> dict:
-    """Extract just the status bits worth comparing across runs."""
+    """Extract just the status bits worth comparing across runs.
+
+    Stays focused on STATUS for change-detection (`_state_differs`); the
+    setpoint snapshot and in_ptown flag are tracked separately in the state
+    file so they never gate "should I email." Only a status transition
+    triggers an email — burst/stale nudges are passive additions to the body.
+    """
     return {
         "overall_status": dashboard.get("overall_status", "ok"),
         "system_statuses": {
@@ -464,8 +665,19 @@ def _load_previous_state() -> dict | None:
         return None
 
 
-def _save_state(state: dict) -> None:
-    state_with_ts = {**state, "last_updated": time.strftime("%Y-%m-%dT%H:%M:%S%z")}
+def _save_state(state: dict, *, in_ptown: bool, in_ptown_changed_at: str,
+                setpoints: dict) -> None:
+    """Persist current state + bookkeeping fields used by the next run.
+    Bookkeeping (setpoints, in_ptown, in_ptown_changed_at) lives alongside
+    the status block; only the status block participates in change-detection.
+    """
+    state_with_ts = {
+        **state,
+        "in_ptown": in_ptown,
+        "in_ptown_changed_at": in_ptown_changed_at,
+        "setpoints": setpoints,
+        "last_updated": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+    }
     STATE_FILE.write_text(json.dumps(state_with_ts, indent=2) + "\n")
 
 
@@ -552,14 +764,55 @@ def main() -> int:
 
     overall = dashboard.get("overall_status", "ok")
 
+    # ---------- compute "did you flip the toggle?" context ----------
+    # in_ptown comes from the dashboard JSON (dashboard.py reads the IN_PTOWN
+    # file inside the runner). We compare against the previous run's saved
+    # value to track when the toggle last flipped, which feeds the stale-state
+    # reminder. The setpoint snapshot drives burst detection.
+    in_ptown = bool(dashboard.get("in_ptown", False))
+    current_setpoints = _extract_setpoints(dashboard)
+    previous_state = _load_previous_state()
+    prev_in_ptown = previous_state.get("in_ptown") if previous_state else None
+    prev_changed_at = previous_state.get("in_ptown_changed_at") if previous_state else None
+    if prev_in_ptown is None or prev_in_ptown != in_ptown:
+        # Either first ever run, or the toggle flipped since last run.
+        in_ptown_changed_at = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+    else:
+        in_ptown_changed_at = prev_changed_at or time.strftime("%Y-%m-%dT%H:%M:%S%z")
+    prev_setpoints = (previous_state or {}).get("setpoints", {})
+    burst_changes = _detect_setpoint_burst(current_setpoints, prev_setpoints)
+    # Burst nudge only fires when we're flagged "away" — at-the-house setpoint
+    # changes are normal and shouldn't pester. The whole point is catching
+    # the arrival case where Daniel forgot to flip the toggle.
+    burst_nudge = bool(burst_changes) and not in_ptown
+    # Stale reminder only on daily emails (the morning reassurance email is
+    # the right place — hourly emails are noisier and not a calm context for
+    # a "still in/away from Ptown?" prompt).
+    stale_days = _stale_days(in_ptown_changed_at)
+    stale_nudge = args.daily and stale_days >= STALE_REMINDER_DAYS
+
+    ctx = {
+        "in_ptown": in_ptown,
+        "toggle_url": _toggle_url(in_ptown),
+        "toggle_label": _toggle_label(in_ptown),
+        "burst_changes": burst_changes,
+        "burst_nudge": burst_nudge,
+        "stale_days": stale_days,
+        "stale_nudge": stale_nudge,
+    }
+
     # --on-change-only: suppress anything that matches prior state.
     if args.on_change_only:
         current_state = _current_state(dashboard)
-        previous_state = _load_previous_state()
         changed = _state_differs(current_state, previous_state)
         # Always persist current state, even if we won't send — this keeps the
         # state file fresh and lets us detect future changes correctly.
-        _save_state(current_state)
+        _save_state(
+            current_state,
+            in_ptown=in_ptown,
+            in_ptown_changed_at=in_ptown_changed_at,
+            setpoints=current_setpoints,
+        )
         if not changed:
             print(f"Status unchanged from previous run ({overall}); no email sent.")
             return 0
@@ -571,12 +824,12 @@ def main() -> int:
         return 0
 
     subject = _build_subject(dashboard, is_daily=args.daily)
-    body = _build_body(dashboard)
+    body = _build_body(dashboard, ctx=ctx)
     # HTML body mirrors the web dashboard's card layout. Same DASHBOARD_URL
     # resolution as the text body so the "View live dashboard" link points
     # to the same place in both.
     dashboard_url = (os.environ.get("DASHBOARD_URL") or DEFAULT_DASHBOARD_URL).strip()
-    html_body = _build_html_body(dashboard, dashboard_url)
+    html_body = _build_html_body(dashboard, dashboard_url, ctx=ctx)
     try:
         _send_resend(api_key, from_addr, to_addr, subject, body, html_body=html_body)
     except Exception as e:

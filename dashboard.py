@@ -37,6 +37,23 @@ HERE = Path(__file__).resolve().parent
 SCRIPTS = ["nuheat", "hottub", "nest"]
 PER_SCRIPT_TIMEOUT = 60  # seconds
 
+# ---------- in-ptown toggle ----------
+# Cost-protection rules (warn-when-warm) are gated on a single user-controlled
+# signal: the presence of an empty file named "IN_PTOWN" at the repo root.
+# Daniel creates the file when he arrives at the house (3 clicks in the GH
+# web UI) and deletes it when he leaves. Polarity is "default-absent = away
+# from Ptown = cost-protection ON" so a forgotten/missing toggle errs on the
+# alerting side. The file IS the toggle — visible at a glance in the repo
+# tree, and a commit to flip it triggers an immediate workflow run.
+IN_PTOWN_FLAG_FILE = HERE / "IN_PTOWN"
+
+
+def _in_ptown() -> bool:
+    """True if Daniel is at the house. Cost-protection rules are SUPPRESSED
+    when in Ptown (he's allowed to crank the heat); they fire when away."""
+    return IN_PTOWN_FLAG_FILE.exists()
+
+
 # ---------- thresholds ----------
 # Indoor air shouldn't drop below this — otherwise pipes are at risk.
 NEST_MIN_OK_F = 45.0
@@ -51,13 +68,17 @@ FLOOR_MIN_OK_F = 35.0
 # the heater isn't keeping up. (Allows some drift in away-mode.)
 HOTTUB_MAX_UNDERSHOOT_F = 8.0
 
-# Hot tub: if we're in away_from_home watercare AND the water is above this,
-# something is heating the tub when it shouldn't be — could be an unauthorized
-# setpoint change or a power surge resetting to factory-default 104°F. Either
-# way, Daniel is paying for electricity he doesn't want to pay for, so warn.
-# Threshold is comfortably above ambient drift (60–65°F summer, lower winter)
-# but well below normal use temperatures (~100°F+).
-HOTTUB_AWAY_MAX_F = 70.0
+# Cost-protection thresholds — fire WARN when AWAY flag is set AND a device's
+# setpoint or current temp climbs above the unattended baseline. Daniel's
+# numbers (2026-05-02): tight enough that any meaningful nudge from baseline
+# trips an alert.
+#   Floors: freeze-protect baseline is 41°F → anything above is unintended heat.
+#   Nest:   eco baseline is ~60°F → setpoint nudge upward is paid heat.
+#   Tub:    65°F is comfortably above ambient drift but well below use temp;
+#           also catches a power-surge factory-reset to 104°F.
+FLOOR_AWAY_MAX_SETPOINT_F = 41.0
+NEST_AWAY_MAX_SETPOINT_F = 60.0
+HOTTUB_AWAY_MAX_F = 65.0
 
 
 # ---------- status labels ----------
@@ -101,18 +122,24 @@ def _run_subsystem(name: str) -> dict:
 
 
 # ---------- per-device health evaluation ----------
-def _evaluate_nuheat(device: dict) -> tuple[str, str | None]:
+# All evaluators take an `away` flag so cost-protection rules can be enabled
+# globally via the AWAY file. Evaluators always run the safety/freeze-protect
+# checks regardless of away — those are about preventing damage, not waste.
+def _evaluate_nuheat(device: dict, *, away: bool) -> tuple[str, str | None]:
     if not device.get("online"):
         return Status.CRIT, "offline"
     cur = device.get("current_f")
+    setp = device.get("setpoint_f")
     if cur is None:
         return Status.WARN, "no reading"
     if cur < FLOOR_MIN_OK_F:
         return Status.CRIT, f"{cur:.1f}°F — floor well below freeze-protect setpoint"
+    if away and setp is not None and setp > FLOOR_AWAY_MAX_SETPOINT_F:
+        return Status.WARN, f"setpoint {setp:.1f}°F while away — heating bumped?"
     return Status.OK, None
 
 
-def _evaluate_hottub(device: dict) -> tuple[str, str | None]:
+def _evaluate_hottub(device: dict, *, away: bool) -> tuple[str, str | None]:
     if not device.get("online"):
         return Status.CRIT, "offline"
     extra = device.get("extra", {}) or {}
@@ -125,39 +152,42 @@ def _evaluate_hottub(device: dict) -> tuple[str, str | None]:
     if cur is None:
         return Status.WARN, "no water temp reading"
     watercare = (extra.get("watercare") or "").lower()
-    # Cost-protection branch: when the tub is supposed to be unattended
-    # (watercare = away_from_home) but the water is warm OR the setpoint has
-    # been moved up, someone or something has cranked it up — could be an
-    # unauthorized change or a power surge resetting to factory-default 104°F.
-    # Don't gate on heater=off; the harm has already happened (you paid to
-    # heat it) and the tub may hold near setpoint with brief heater bursts
-    # that fall between hourly polls. Two checks, water first because that's
-    # the actual cost; setpoint second to catch the early window before the
-    # water has finished heating.
-    if watercare == "away_from_home":
+    # Cost-protection branch: gated on the AWAY flag (single source of truth
+    # for "Daniel is not at the house"). Catches both an unauthorized setpoint
+    # change and a power-surge factory-reset to 104°F. Water check first
+    # because that's the actual cost; setpoint second to catch the early
+    # window before water has finished heating.
+    if away:
         if cur > HOTTUB_AWAY_MAX_F:
             return Status.WARN, f"water {cur:.1f}°F while away — heater bumped?"
         if setp is not None and setp > HOTTUB_AWAY_MAX_F:
             return Status.WARN, f"setpoint {setp:.1f}°F while away — heater bumped?"
-        # Skip the undershoot check while away — a high setpoint that the
-        # user clearly isn't trying to maintain (heater off, away mode) would
-        # otherwise produce a misleading "20°F below setpoint" warning.
-        return Status.OK, None
-    if setp is not None and (setp - cur) > HOTTUB_MAX_UNDERSHOOT_F:
+    # Undershoot rule still uses watercare as its gate (not the AWAY file)
+    # because it's tub-specific: a high setpoint with watercare=away_from_home
+    # is one the user clearly isn't trying to maintain, so don't complain that
+    # the tub is "below setpoint" then.
+    if (
+        watercare != "away_from_home"
+        and setp is not None
+        and (setp - cur) > HOTTUB_MAX_UNDERSHOOT_F
+    ):
         return Status.WARN, f"water {cur:.1f}°F is {setp - cur:.1f}°F below setpoint"
     return Status.OK, None
 
 
-def _evaluate_nest(device: dict) -> tuple[str, str | None]:
+def _evaluate_nest(device: dict, *, away: bool) -> tuple[str, str | None]:
     if not device.get("online"):
         return Status.CRIT, "offline"
     cur = device.get("current_f")
+    setp = device.get("setpoint_f")
     if cur is None:
         return Status.WARN, "no temperature reading"
     if cur < NEST_MIN_OK_F_CRIT:
         return Status.CRIT, f"{cur:.1f}°F — pipe-freeze risk"
     if cur < NEST_MIN_OK_F:
         return Status.WARN, f"{cur:.1f}°F — getting cold indoors"
+    if away and setp is not None and setp > NEST_AWAY_MAX_SETPOINT_F:
+        return Status.WARN, f"setpoint {setp:.1f}°F while away — heating bumped?"
     return Status.OK, None
 
 
@@ -174,10 +204,10 @@ SYSTEM_LABELS = {
 }
 
 
-def _evaluate_system(result: dict) -> dict:
+def _evaluate_system(result: dict, *, away: bool) -> dict:
     """Annotate the subsystem result with per-device and overall status."""
     system = result.get("system", "?")
-    evaluator = EVALUATORS.get(system, lambda d: (Status.OK, None))
+    evaluator = EVALUATORS.get(system, lambda d, *, away: (Status.OK, None))
 
     if result.get("error"):
         return {
@@ -191,7 +221,7 @@ def _evaluate_system(result: dict) -> dict:
     worst = Status.OK
     reasons: list[str] = []
     for dev in result.get("devices", []):
-        status, reason = evaluator(dev)
+        status, reason = evaluator(dev, away=away)
         evaluated.append({"device": dev, "status": status, "reason": reason})
         if SEVERITY[status] > SEVERITY[worst]:
             worst = status
@@ -274,7 +304,9 @@ def main() -> int:
     with ThreadPoolExecutor(max_workers=len(SCRIPTS)) as ex:
         raw_results = list(ex.map(_run_subsystem, SCRIPTS))
 
-    aggregated = [_evaluate_system(r) for r in raw_results]
+    in_ptown = _in_ptown()
+    away = not in_ptown
+    aggregated = [_evaluate_system(r, away=away) for r in raw_results]
 
     if args.emit_json:
         # Trim the internal "evaluated" list to something easy to consume —
@@ -296,6 +328,7 @@ def main() -> int:
         print(json.dumps({
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
             "overall_status": worst,
+            "in_ptown": in_ptown,
             "systems": payload,
         }, indent=2))
     else:
