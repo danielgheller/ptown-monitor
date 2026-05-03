@@ -1,0 +1,78 @@
+name: Apply control action
+
+# Triggered by the Cloudflare Worker (one-tap email button) via the GitHub
+# REST workflow_dispatch endpoint, OR manually from the Actions tab for
+# testing. The worker passes an `action` input that names which preset to
+# apply — control.py is the single source of truth for what each action
+# actually does on the devices.
+#
+# Why a separate workflow rather than re-using hourly.yml:
+#   - Different concurrency profile (control taps should never queue behind
+#     a long-running hourly check).
+#   - Different exit-code semantics (control.py returns non-zero on device
+#     failure, which we WANT to surface as a failed run; hourly.yml
+#     deliberately swallows non-zero exits from dashboard.py).
+#   - Separate Actions UI page makes a "what did the buttons do" history
+#     trivially auditable.
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Which control action to apply'
+        required: true
+        type: choice
+        options:
+          - away_all
+          - tub_104
+          - nest_off_eco
+          - master_bath_72
+
+# Don't queue these — if Daniel mashes the same button twice, the second
+# tap should pre-empt the first. Tapping different buttons in succession
+# (e.g. "tub 104" then "master bath 72") still serializes via cancel-in-
+# progress, which is what we want: the LAST tap wins.
+concurrency:
+  group: ptown-control
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+# No git writes from this workflow — IN_PTOWN is committed by the worker
+# itself (it has its own PAT). Default GITHUB_TOKEN read perms are fine.
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Apply ${{ inputs.action }}
+        env:
+          NUHEAT_EMAIL:       ${{ secrets.NUHEAT_EMAIL }}
+          NUHEAT_PASSWORD:    ${{ secrets.NUHEAT_PASSWORD }}
+          SMARTTUB_EMAIL:     ${{ secrets.SMARTTUB_EMAIL }}
+          SMARTTUB_PASSWORD:  ${{ secrets.SMARTTUB_PASSWORD }}
+          NEST_PROJECT_ID:    ${{ secrets.NEST_PROJECT_ID }}
+          NEST_CLIENT_ID:     ${{ secrets.NEST_CLIENT_ID }}
+          NEST_CLIENT_SECRET: ${{ secrets.NEST_CLIENT_SECRET }}
+          NEST_REFRESH_TOKEN: ${{ secrets.NEST_REFRESH_TOKEN }}
+        # Default `bash -e {0}` is what we want here: control.py exits 1
+        # if any device call failed and we WANT that to surface as a failed
+        # run (turns into a GH email + red dot in the Actions UI, which is
+        # how Daniel learns the button didn't fully work).
+        run: python control.py "${{ inputs.action }}"

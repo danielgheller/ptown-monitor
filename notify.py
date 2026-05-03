@@ -245,6 +245,16 @@ def _build_body(dashboard: dict, *, ctx: dict) -> str:
     lines.append(f"Mode: {location} (cost-protection {'OFF' if ctx['in_ptown'] else 'ON'})")
     lines.append(f"Flip: {ctx['toggle_label']} → {ctx['toggle_url']}")
     lines.append("")
+    # Quick-action one-tap controls. Plain-text just lists URLs; the HTML
+    # body lays them out as buttons. We only render rows that have a real
+    # signed URL (i.e. when the Worker is configured) so a half-deployed
+    # state doesn't show fake-looking dead buttons in plain text.
+    if ctx["control_actions"]:
+        lines.append("Quick controls:")
+        for _key, label, caption, url in ctx["control_actions"]:
+            if url:
+                lines.append(f"  {label} ({caption}): {url}")
+        lines.append("")
     if ctx["burst_nudge"]:
         lines.append("Setpoints just changed: " + ", ".join(ctx["burst_changes"]))
         lines.append("Did you arrive? Tap the link above to flip the toggle.")
@@ -385,6 +395,62 @@ def _build_html_body(dashboard: dict, dashboard_url: str, *, ctx: dict) -> str:
         f'{html.escape(ctx["toggle_label"])}</a>'
         '</td></tr></table>'
     )
+
+    # Quick-action control buttons. 2-up grid on desktop, stacks naturally on
+    # narrow mobile because each button is its own table cell with width:50%.
+    # First button (away_all) is rendered in red to signal "this turns things
+    # DOWN"; the warm-up buttons are dark/blue to signal "this turns things up."
+    if ctx["control_actions"]:
+        # Build cells in pairs so we get a 2-up layout with consistent spacing.
+        rows: list[list[tuple[str, str, str, str]]] = []
+        pair: list[tuple[str, str, str, str]] = []
+        for key, label, caption, url in ctx["control_actions"]:
+            pair.append((key, label, caption, url))
+            if len(pair) == 2:
+                rows.append(pair)
+                pair = []
+        if pair:
+            rows.append(pair)
+
+        parts.append(
+            '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
+            'style="border-collapse:collapse;margin-bottom:10px;">'
+        )
+        for row in rows:
+            parts.append('<tr>')
+            for key, label, caption, url in row:
+                # Visual hierarchy: away_all is destructive-ish (turns the
+                # house down), so it gets a muted red. The warm-up actions
+                # share an ink-blue. Disabled (no Worker) state stays grey.
+                if not url:
+                    bg, fg, border = "#f3f4f6", "#9ca3af", "#e5e7eb"
+                elif key == "away_all":
+                    bg, fg, border = "#fef2f2", "#991b1b", "#fecaca"
+                else:
+                    bg, fg, border = "#eff6ff", "#1e40af", "#bfdbfe"
+                href = html.escape(url, quote=True) if url else "#"
+                disabled_attr = (
+                    ' onclick="return false" aria-disabled="true"'
+                    if not url else ""
+                )
+                parts.append(
+                    '<td align="center" valign="top" width="50%" '
+                    'style="padding:4px;">'
+                    f'<a href="{href}"{disabled_attr} '
+                    f'style="display:block;background:{bg};color:{fg};'
+                    f'border:1px solid {border};border-radius:8px;'
+                    f'padding:10px 8px;text-decoration:none;font-size:13px;'
+                    f'font-weight:600;text-align:center;">'
+                    f'<div>{html.escape(label)}</div>'
+                    f'<div style="font-size:10px;font-weight:400;color:#6b7280;'
+                    f'margin-top:3px;">{html.escape(caption)}</div>'
+                    '</a></td>'
+                )
+            # Pad odd-length rows so the 2-up grid stays aligned.
+            if len(row) == 1:
+                parts.append('<td width="50%" style="padding:4px;"></td>')
+            parts.append('</tr>')
+        parts.append('</table>')
 
     # Setpoint-burst nudge — yellow banner, only when we suspect Daniel just
     # arrived (multiple setpoints jumped AND he's currently flagged "away").
@@ -584,8 +650,27 @@ def _gh_ui_toggle_url(in_ptown: bool) -> str:
     return f"{_repo_url()}/new/main?filename={IN_PTOWN_FILE}"
 
 
+def _signed_action_url(action: str) -> str:
+    """Build a signed Worker URL for any action (toggle or control).
+
+    Same HMAC scheme as the original IN_PTOWN toggle — we just pass the
+    action name straight through. The Worker's ACTIONS table decides what
+    each action does (IN_PTOWN flip + optional workflow_dispatch). Returns
+    "" when the Worker isn't configured, so callers can fall back.
+    """
+    base = _worker_url()
+    secret = _toggle_secret()
+    if not base or not secret:
+        return ""
+    ts = str(int(time.time()))
+    msg = f"{action}:{ts}".encode()
+    sig = hmac.new(secret.encode(), msg, hashlib.sha256).hexdigest()
+    qs = urllib.parse.urlencode({"ts": ts, "t": sig})
+    return f"{base}/{action}?{qs}"
+
+
 def _toggle_url(in_ptown: bool) -> str:
-    """One-tap toggle URL.
+    """One-tap toggle URL for the IN_PTOWN flag (existing behavior).
 
     When WORKER_URL + TOGGLE_SECRET are configured, returns a signed
     Cloudflare Worker URL — the recipient taps once and the Worker performs
@@ -599,21 +684,41 @@ def _toggle_url(in_ptown: bool) -> str:
     instead of one. This means Daniel can deploy the Worker whenever, and
     until then the email keeps working with the original behavior.
     """
-    base = _worker_url()
-    secret = _toggle_secret()
-    if not base or not secret:
-        return _gh_ui_toggle_url(in_ptown)
     action = "leave" if in_ptown else "arrive"
-    ts = str(int(time.time()))
-    msg = f"{action}:{ts}".encode()
-    sig = hmac.new(secret.encode(), msg, hashlib.sha256).hexdigest()
-    qs = urllib.parse.urlencode({"ts": ts, "t": sig})
-    return f"{base}/{action}?{qs}"
+    signed = _signed_action_url(action)
+    return signed or _gh_ui_toggle_url(in_ptown)
 
 
 def _toggle_label(in_ptown: bool) -> str:
     """Verb tense matches the user's NEXT action, not their current state."""
     return "✈️ I'm leaving Ptown" if in_ptown else "🏠 I'm in Ptown now"
+
+
+# ---------- control-action buttons (in addition to the in/away toggle) ----------
+# Each entry: (action key, button label, plain-text caption).
+# The action keys MUST match the Worker's ACTIONS table AND the choices in
+# .github/workflows/control.yml's `inputs.action`. If you rename one, rename
+# all three.
+CONTROL_BUTTONS = [
+    ("away_all",       "✈️ All away",            "everything → away/eco/freeze"),
+    ("tub_104",        "🛁 Tub → 104°F",         "heat the tub for use"),
+    ("nest_off_eco",   "🌡️ Thermostats off eco", "exit eco, keep last setpoint"),
+    ("master_bath_72", "🦶 Master bath → 72°F",  "warm up the master bath floor"),
+]
+
+
+def _control_action_urls() -> list[tuple[str, str, str, str]]:
+    """Return [(action_key, label, caption, url_or_empty)] for the email.
+
+    URL is empty string when the Worker isn't configured — the email will
+    show a disabled-looking note instead of a dead button. We deliberately
+    don't fall back to a GH-UI URL pattern for control actions: there's no
+    web flow that's equivalent to "dispatch this workflow with this input."
+    """
+    out = []
+    for key, label, caption in CONTROL_BUTTONS:
+        out.append((key, label, caption, _signed_action_url(key)))
+    return out
 
 
 # ---------- setpoint flattening + burst detection ----------
@@ -835,6 +940,12 @@ def main() -> int:
         "burst_nudge": burst_nudge,
         "stale_days": stale_days,
         "stale_nudge": stale_nudge,
+        # Control buttons (away_all + 3 warm-up buttons). Each entry is
+        # (action_key, label, caption, signed_url_or_empty). Empty URL means
+        # the Worker isn't configured — the email still renders but with
+        # disabled-looking buttons. Re-evaluated every email so each link
+        # carries a fresh timestamp / signature inside its 30-day TTL.
+        "control_actions": _control_action_urls(),
     }
 
     # --on-change-only: suppress anything that matches prior state.

@@ -102,6 +102,46 @@ def fetch_thermostat(sid: str, serial: str) -> dict:
     return _get(url)
 
 
+# ---------- WRITE helpers (used by control.py) ----------
+# Nuheat's API for setting a setpoint takes its proprietary unit, NOT °C.
+# nuheat-python (the canonical community library) uses (F-33)*56, which is
+# what's been proven in production for years. Using this formula instead of
+# our own °F→°C conversion keeps us bug-compatible with what the Nuheat
+# servers expect.
+#
+# ScheduleMode encoding (from nuheat-python):
+#   1 = follow schedule          (RUN)
+#   2 = temporary hold (until next schedule change)
+#   3 = permanent hold           (HOLD)
+# We use HOLD (3) for every write — the user just tapped a button saying
+# "set to X", they almost certainly don't want the schedule to override
+# them in 4 hours.
+SCHEDULE_HOLD = 3
+SCHEDULE_RUN = 1
+
+
+def _f_to_nuheat_setpoint(temp_f: float) -> int:
+    """Convert °F → Nuheat's proprietary setpoint unit. (F-33)*56."""
+    return int((temp_f - 33) * 56)
+
+
+def set_setpoint_f(sid: str, serial: str, temp_f: float) -> dict:
+    """Set a thermostat's setpoint in °F (permanent hold).
+
+    POSTs to the /thermostat endpoint with the proprietary setpoint value
+    and ScheduleMode=3 (HOLD). Returns the parsed response dict.
+    """
+    url = (
+        f"{API_BASE}/thermostat?sessionid={urllib.parse.quote(sid)}"
+        f"&serialnumber={urllib.parse.quote(serial)}"
+    )
+    body = {
+        "SetPointTemp": _f_to_nuheat_setpoint(temp_f),
+        "ScheduleMode": SCHEDULE_HOLD,
+    }
+    return _post(url, body)
+
+
 # ---------- formatting ----------
 def format_temp(hundredths_c) -> str:
     """

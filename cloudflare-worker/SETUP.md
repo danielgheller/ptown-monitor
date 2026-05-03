@@ -26,9 +26,18 @@ You'll create three secrets along the way:
 2. Token name: `ptown-toggle-worker`
 3. Expiration: 1 year (longest available)
 4. Repository access: **Only select repositories** → `danielgheller/ptown-monitor`
-5. Permissions → Repository permissions → **Contents: Read and write**
+5. Permissions → Repository permissions:
+   - **Contents: Read and write** (for the IN_PTOWN file flip)
+   - **Actions: Read and write** (for dispatching the control.yml workflow
+     when you tap All-away / Tub 104 / Thermostats off eco / Master bath 72)
 6. Generate, copy the token (starts with `github_pat_…`). Don't lose it —
    GitHub only shows it once.
+
+> **If you set this up before the device-control buttons existed**, your PAT
+> only has Contents permission. The Worker will return "Workflow dispatch
+> failed: 403" when you tap any of the four control buttons. Edit the same
+> token at https://github.com/settings/personal-access-tokens, add
+> **Actions: Read and write**, save. No need to redeploy the Worker.
 
 ## Step 2 — Generate a TOGGLE_SECRET
 

@@ -1,16 +1,22 @@
-// Ptown Monitor — IN_PTOWN toggle Cloudflare Worker.
+// Ptown Monitor — toggle + control Cloudflare Worker.
 //
-// One-tap endpoint that flips the IN_PTOWN flag file in the
-// danielgheller/ptown-monitor repo from a link in an email. Email button
-// hits /arrive (creates the file) or /leave (deletes it); worker validates
-// an HMAC-signed token, then talks to the GitHub Contents API to perform
-// the commit. The next hourly run picks up the new state — and we also
-// configure the workflow to trigger on push of IN_PTOWN, so the change
-// takes effect within ~30s rather than waiting for the next :15 cron.
+// Two families of one-tap email endpoints:
+//
+// 1. Location-toggle (existing): /arrive and /leave create or delete the
+//    IN_PTOWN flag file. The next hourly run picks up the new state — and
+//    we configure hourly.yml to trigger on push of IN_PTOWN, so the change
+//    takes effect within ~30s rather than waiting for the next :15 cron.
+//
+// 2. Device-control (new): /away_all, /tub_104, /nest_off_eco,
+//    /master_bath_72 dispatch the .github/workflows/control.yml workflow
+//    with the matching action name. Each button has an implied IN_PTOWN
+//    side effect — "all away" flips you out, the three warm-up buttons
+//    flip you in — so we update IN_PTOWN inline before dispatching.
 //
 // Secrets (set via `wrangler secret put` or the dashboard):
-//   GITHUB_TOKEN   - fine-grained PAT, contents:write on the repo only
-//   TOGGLE_SECRET  - shared secret with notify.py for HMAC signing
+//   GITHUB_TOKEN   - fine-grained PAT, contents:write AND actions:write
+//                    on danielgheller/ptown-monitor only.
+//   TOGGLE_SECRET  - shared secret with notify.py for HMAC signing.
 //
 // Token format (notify.py builds these, worker validates):
 //   t  = HMAC-SHA256(TOGGLE_SECRET, "<action>:<ts>")
@@ -21,6 +27,7 @@
 const GH_OWNER = "danielgheller";
 const GH_REPO = "ptown-monitor";
 const IN_PTOWN_FILE = "IN_PTOWN";
+const CONTROL_WORKFLOW = "control.yml";
 const TOKEN_TTL_SECONDS = 30 * 86400; // 30 days
 
 // File body when creating IN_PTOWN. Keep it self-documenting so anyone
@@ -31,6 +38,26 @@ const IN_PTOWN_BODY =
   "Daniel is at the house. Cost-protection alerts are SUPPRESSED while\n" +
   "this file exists. To leave, tap the \"I'm leaving Ptown\" button in any\n" +
   "monitor email -- or delete this file from the GitHub UI.\n";
+
+// Action registry. The keys here must match the URL path AND (for the
+// control actions) the workflow_dispatch input value AND notify.py's
+// signing message. Drift between any two of those three breaks one-tap
+// silently — keep them in sync.
+//
+//   inPtownEffect  "create"  → ensure IN_PTOWN exists before dispatching
+//                  "delete"  → ensure IN_PTOWN absent before dispatching
+//                  "none"    → don't touch IN_PTOWN
+//   workflowAction null      → no workflow dispatch (just IN_PTOWN flip,
+//                              i.e. the original /arrive and /leave)
+//                  "<name>"  → dispatch control.yml with this action input
+const ACTIONS = {
+  arrive:         { inPtownEffect: "create", workflowAction: null,             confirm: "🏠 You're in Ptown. Cost-protection is now OFF — adjust everything however you like." },
+  leave:          { inPtownEffect: "delete", workflowAction: null,             confirm: "✈️ You've left Ptown. Cost-protection is now ON — you'll get a WARN email if any device is bumped above baseline." },
+  away_all:       { inPtownEffect: "delete", workflowAction: "away_all",       confirm: "✈️ All-away applied. Tub → 65°F, Nest → eco, floors → 41°F. Cost-protection is now ON. Devices update over the next minute or two." },
+  tub_104:        { inPtownEffect: "create", workflowAction: "tub_104",        confirm: "🛁 Heating the tub to 104°F. You're flagged in-Ptown so the cost-protection WARN won't fire. Allow ~30 min to reach temp." },
+  nest_off_eco:   { inPtownEffect: "create", workflowAction: "nest_off_eco",   confirm: "🌡️ Taking all 3 Nest thermostats out of eco mode. They'll resume their last HEAT setpoints. You're flagged in-Ptown." },
+  master_bath_72: { inPtownEffect: "create", workflowAction: "master_bath_72", confirm: "🦶 Master bath floor → 72°F. You're flagged in-Ptown. The floor takes a while to feel warm — check back in 20-30 min." },
+};
 
 // Base64-encode a string as UTF-8 bytes. The naive `btoa(str)` only handles
 // Latin-1 input (any code point > 0xFF throws), so a sneaky character like
@@ -46,8 +73,6 @@ function utf8ToBase64(str) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    // Map URL path → action. We accept /arrive and /leave (and a fallback
-    // root path that explains usage so a misclick doesn't look broken).
     const action = url.pathname.replace(/^\/+/, "").toLowerCase();
 
     if (action === "" || action === "favicon.ico") {
@@ -56,10 +81,14 @@ export default {
         200
       );
     }
-    if (action !== "arrive" && action !== "leave") {
+    const spec = ACTIONS[action];
+    if (!spec) {
       return htmlResponse(`Unknown action: ${action}`, 404);
     }
 
+    // Validate token (timestamp + HMAC). Same scheme as before — every
+    // action shares the signing format so notify.py only has one path to
+    // build URLs. Catches stale email-scanner replays (TTL) and tampering.
     const ts = url.searchParams.get("ts");
     const t = url.searchParams.get("t");
     if (!ts || !t) {
@@ -73,33 +102,44 @@ export default {
     if (Math.abs(now - tsNum) > TOKEN_TTL_SECONDS) {
       return expiredResponse(action, "this email link is older than 30 days");
     }
-
     const expected = await hmacHex(env.TOGGLE_SECRET, `${action}:${ts}`);
     if (!constantTimeEqual(t, expected)) {
       return expiredResponse(action, "signature didn't validate");
     }
 
+    // Apply the IN_PTOWN side effect FIRST, then dispatch the workflow.
+    // This ordering matters: hourly.yml has `push: paths: [IN_PTOWN]`, so a
+    // flag flip kicks off a status email almost immediately. We want that
+    // email to reflect Daniel's intent (in/away) right away, even before
+    // control.yml finishes nudging the devices.
     try {
-      if (action === "arrive") {
+      if (spec.inPtownEffect === "create") {
         await ghCreateFile(env.GITHUB_TOKEN);
-        return htmlResponse(
-          "🏠 You're in Ptown. Cost-protection is now OFF — adjust everything however you like."
-        );
-      } else {
+      } else if (spec.inPtownEffect === "delete") {
         await ghDeleteFile(env.GITHUB_TOKEN);
-        return htmlResponse(
-          "✈️ You've left Ptown. Cost-protection is now ON — you'll get a WARN email if any device is bumped above baseline."
-        );
       }
     } catch (e) {
-      // Surface the GitHub API error inline AND offer the GH UI fallback,
-      // since the user already tapped expecting something to happen.
-      return expiredResponse(action, `GitHub API error: ${e.message}`);
+      return expiredResponse(action, `IN_PTOWN flip failed: ${e.message}`);
     }
+
+    // Dispatch the control workflow if this action has one.
+    if (spec.workflowAction) {
+      try {
+        await ghDispatchWorkflow(env.GITHUB_TOKEN, spec.workflowAction);
+      } catch (e) {
+        // Surface the dispatch failure but don't unwind the IN_PTOWN flip
+        // — Daniel's intent is captured, the next hourly run will see it,
+        // and the device commands can be retried by tapping the button
+        // again or by re-running the workflow from the GH UI.
+        return expiredResponse(action, `Workflow dispatch failed: ${e.message}`);
+      }
+    }
+
+    return htmlResponse(spec.confirm);
   },
 };
 
-// ---------- GitHub Contents API ----------
+// ---------- GitHub Contents API (IN_PTOWN flag) ----------
 async function ghCreateFile(token) {
   const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${IN_PTOWN_FILE}`;
   // GET first — if the file already exists, the action is a no-op (Daniel
@@ -146,6 +186,32 @@ async function ghDeleteFile(token) {
   });
   if (!resp.ok) {
     throw new Error(`DELETE ${resp.status}: ${await resp.text().then(s => s.slice(0, 200))}`);
+  }
+}
+
+// ---------- GitHub Actions API (control.yml dispatch) ----------
+async function ghDispatchWorkflow(token, actionInput) {
+  // workflow_dispatch endpoint returns 204 No Content on success. The
+  // workflow itself runs asynchronously — we don't (and can't) wait for it
+  // here. Daniel will see the result either via control.yml run history in
+  // the GH Actions UI, or — if the run fails — via the standard GH "your
+  // workflow run failed" email that GitHub sends automatically.
+  const url =
+    `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}` +
+    `/actions/workflows/${CONTROL_WORKFLOW}/dispatches`;
+  const body = JSON.stringify({
+    ref: "main",
+    inputs: { action: actionInput },
+  });
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: { ...ghHeaders(token), "Content-Type": "application/json" },
+    body,
+  });
+  if (!resp.ok) {
+    throw new Error(
+      `dispatch ${resp.status}: ${await resp.text().then(s => s.slice(0, 200))}`
+    );
   }
 }
 
@@ -197,20 +263,35 @@ function htmlResponse(message, status = 200) {
 }
 
 function expiredResponse(action, reason) {
-  // Fallback URL points at GitHub's normal create-file or delete-file UI.
-  // Daniel still has to tap "Commit changes" but at least the button works.
-  const fallback =
-    action === "arrive"
-      ? `https://github.com/${GH_OWNER}/${GH_REPO}/new/main?filename=${IN_PTOWN_FILE}`
-      : `https://github.com/${GH_OWNER}/${GH_REPO}/delete/main/${IN_PTOWN_FILE}`;
-  const verb = action === "arrive" ? "🏠 In Ptown" : "✈️ Leaving Ptown";
-  const body =
-    `<p style="margin:0 0 12px 0;">This link can't run automatically (${escapeHtml(reason)}).</p>` +
-    `<p style="margin:0 0 16px 0;">You can still flip the toggle by hand:</p>` +
-    `<a href="${escapeAttr(fallback)}" ` +
-    `style="display:inline-block;background:#111827;color:#fff;text-decoration:none;` +
-    `font-size:14px;font-weight:600;padding:10px 16px;border-radius:8px;">` +
-    `${escapeHtml(verb)} →</a>`;
+  // For the IN_PTOWN-only actions (arrive/leave), we can offer a GitHub
+  // web-UI fallback that still works. For the device-control actions
+  // there's no equivalent UI fallback — the user's only recourse is to
+  // re-trigger from a fresh email or run the workflow manually from the
+  // Actions tab — so we just explain that.
+  let body;
+  if (action === "arrive" || action === "leave") {
+    const fallback =
+      action === "arrive"
+        ? `https://github.com/${GH_OWNER}/${GH_REPO}/new/main?filename=${IN_PTOWN_FILE}`
+        : `https://github.com/${GH_OWNER}/${GH_REPO}/delete/main/${IN_PTOWN_FILE}`;
+    const verb = action === "arrive" ? "🏠 In Ptown" : "✈️ Leaving Ptown";
+    body =
+      `<p style="margin:0 0 12px 0;">This link can't run automatically (${escapeHtml(reason)}).</p>` +
+      `<p style="margin:0 0 16px 0;">You can still flip the toggle by hand:</p>` +
+      `<a href="${escapeAttr(fallback)}" ` +
+      `style="display:inline-block;background:#111827;color:#fff;text-decoration:none;` +
+      `font-size:14px;font-weight:600;padding:10px 16px;border-radius:8px;">` +
+      `${escapeHtml(verb)} →</a>`;
+  } else {
+    const runsUrl = `https://github.com/${GH_OWNER}/${GH_REPO}/actions/workflows/${CONTROL_WORKFLOW}`;
+    body =
+      `<p style="margin:0 0 12px 0;">This link couldn't run (${escapeHtml(reason)}).</p>` +
+      `<p style="margin:0 0 16px 0;">You can run the action manually from the Actions tab:</p>` +
+      `<a href="${escapeAttr(runsUrl)}" ` +
+      `style="display:inline-block;background:#111827;color:#fff;text-decoration:none;` +
+      `font-size:14px;font-weight:600;padding:10px 16px;border-radius:8px;">` +
+      `Open Actions tab →</a>`;
+  }
   return new Response(pageShell({ heading: "Link expired", body }), {
     status: 410,
     headers: { "Content-Type": "text/html; charset=utf-8" },

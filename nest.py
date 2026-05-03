@@ -82,6 +82,38 @@ def list_devices(project_id: str, access_token: str) -> list[dict]:
     return resp.get("devices", [])
 
 
+# ---------- WRITE helpers (used by control.py) ----------
+# SDM commands documented at:
+# https://developers.google.com/nest/device-access/api/thermostat#commands
+#
+# Common commands we use:
+#   sdm.devices.commands.ThermostatEco.SetMode    {mode: "MANUAL_ECO" | "OFF"}
+#   sdm.devices.commands.ThermostatMode.SetMode   {mode: "HEAT" | "COOL" | "HEATCOOL" | "OFF"}
+#   sdm.devices.commands.ThermostatTemperatureSetpoint.SetHeat   {heatCelsius: float}
+#
+# Note: SetMode (eco) of OFF returns the thermostat to its previous HEAT
+# mode + setpoint automatically — exactly the "exit eco, keep current
+# setpoint" behavior we want for the "Thermostats off eco" button.
+def execute_command(device_resource: str, access_token: str,
+                    command: str, params: dict | None = None) -> dict:
+    """Run an SDM command against a device. Returns the parsed response.
+
+    `device_resource` is the full resource name including the enterprise
+    prefix, e.g. `enterprises/<project>/devices/<id>` — same format the
+    /devices list endpoint returns.
+    """
+    url = f"{SDM_BASE}/{device_resource}:executeCommand"
+    body = json.dumps({"command": command, "params": params or {}}).encode()
+    return _http(
+        url, data=body,
+        headers={
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+
+
 def _c_to_f(c):
     if c is None:
         return None
