@@ -30,7 +30,18 @@ const IN_PTOWN_BODY =
   "# IN_PTOWN\n\n" +
   "Daniel is at the house. Cost-protection alerts are SUPPRESSED while\n" +
   "this file exists. To leave, tap the \"I'm leaving Ptown\" button in any\n" +
-  "monitor email — or delete this file from the GitHub UI.\n";
+  "monitor email -- or delete this file from the GitHub UI.\n";
+
+// Base64-encode a string as UTF-8 bytes. The naive `btoa(str)` only handles
+// Latin-1 input (any code point > 0xFF throws), so a sneaky character like
+// an em-dash ('—', U+2014) breaks the GitHub Contents API call. Going
+// through TextEncoder + a per-byte string fixes it for any Unicode.
+function utf8ToBase64(str) {
+  const bytes = new TextEncoder().encode(str);
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin);
+}
 
 export default {
   async fetch(request, env) {
@@ -100,7 +111,7 @@ async function ghCreateFile(token) {
   }
   const body = JSON.stringify({
     message: "I'm in Ptown",
-    content: btoa(IN_PTOWN_BODY),
+    content: utf8ToBase64(IN_PTOWN_BODY),
     branch: "main",
   });
   const resp = await fetch(url, {
