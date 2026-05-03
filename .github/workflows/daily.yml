@@ -55,4 +55,9 @@ jobs:
           NEST_REFRESH_TOKEN: ${{ secrets.NEST_REFRESH_TOKEN }}
           RESEND_API_KEY:     ${{ secrets.RESEND_API_KEY }}
           NOTIFY_TO_EMAIL:    ${{ secrets.NOTIFY_TO_EMAIL }}
+          # See hourly.yml — when configured, notify.py emits signed
+          # Cloudflare Worker URLs for one-tap toggle from email; otherwise
+          # it falls back to the GitHub UI.
+          WORKER_URL:         ${{ secrets.WORKER_URL }}
+          TOGGLE_SECRET:      ${{ secrets.TOGGLE_SECRET }}
         run: python notify.py --daily

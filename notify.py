@@ -47,6 +47,8 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import hashlib
+import hmac
 import html
 import json
 import os
@@ -54,6 +56,7 @@ import subprocess
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -563,16 +566,49 @@ def _repo_url() -> str:
     return (os.environ.get("REPO_URL") or DEFAULT_REPO_URL).strip().rstrip("/")
 
 
-def _toggle_url(in_ptown: bool) -> str:
-    """One-tap link that opens GitHub's create-file or delete-file UI on
-    mobile/web. User taps 'Commit changes' on the resulting page to flip.
+def _worker_url() -> str:
+    """Cloudflare Worker base URL, e.g. https://ptown-toggle.daniel.workers.dev.
+    Empty string means "Worker not configured" → fall back to GitHub UI URLs."""
+    return (os.environ.get("WORKER_URL") or "").strip().rstrip("/")
 
-    - in Ptown → next action is "leaving" → delete the file
-    - away   → next action is "arriving" → create the file
-    """
+
+def _toggle_secret() -> str:
+    """Shared HMAC secret with the Worker. Empty → fall back to GitHub UI."""
+    return os.environ.get("TOGGLE_SECRET") or ""
+
+
+def _gh_ui_toggle_url(in_ptown: bool) -> str:
+    """GitHub web-UI fallback (two-tap: link → 'Commit changes')."""
     if in_ptown:
         return f"{_repo_url()}/delete/main/{IN_PTOWN_FILE}"
     return f"{_repo_url()}/new/main?filename={IN_PTOWN_FILE}"
+
+
+def _toggle_url(in_ptown: bool) -> str:
+    """One-tap toggle URL.
+
+    When WORKER_URL + TOGGLE_SECRET are configured, returns a signed
+    Cloudflare Worker URL — the recipient taps once and the Worker performs
+    the GitHub commit on their behalf. The signature binds (action, ts) so
+    a stale link can't be replayed after TOKEN_TTL_SECONDS (30 days, enforced
+    on the Worker side); the timestamp is also passed as a query param for
+    the Worker to validate.
+
+    When the Worker isn't configured (no env), falls back to the GitHub
+    create-file / delete-file UI. The button still works — just two taps
+    instead of one. This means Daniel can deploy the Worker whenever, and
+    until then the email keeps working with the original behavior.
+    """
+    base = _worker_url()
+    secret = _toggle_secret()
+    if not base or not secret:
+        return _gh_ui_toggle_url(in_ptown)
+    action = "leave" if in_ptown else "arrive"
+    ts = str(int(time.time()))
+    msg = f"{action}:{ts}".encode()
+    sig = hmac.new(secret.encode(), msg, hashlib.sha256).hexdigest()
+    qs = urllib.parse.urlencode({"ts": ts, "t": sig})
+    return f"{base}/{action}?{qs}"
 
 
 def _toggle_label(in_ptown: bool) -> str:

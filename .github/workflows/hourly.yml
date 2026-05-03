@@ -16,6 +16,13 @@ on:
     # Every hour at :15, to avoid the thundering-herd at :00.
     - cron: '15 * * * *'
   workflow_dispatch:
+  # Run immediately when IN_PTOWN flips. The Cloudflare Worker (and GH
+  # web-UI fallback) creates/deletes this file when Daniel taps the toggle
+  # in an email — without this trigger he'd wait up to an hour for the new
+  # state to take effect. Path filter keeps unrelated commits from re-running.
+  push:
+    paths:
+      - 'IN_PTOWN'
 
 # Only one run at a time — if an hourly run is somehow still going when the
 # next one fires, cancel the new one rather than doubling up on the state
@@ -76,6 +83,12 @@ jobs:
           NEST_REFRESH_TOKEN: ${{ secrets.NEST_REFRESH_TOKEN }}
           RESEND_API_KEY:     ${{ secrets.RESEND_API_KEY }}
           NOTIFY_TO_EMAIL:    ${{ secrets.NOTIFY_TO_EMAIL }}
+          # One-tap toggle URL plumbing — when both are set, notify.py emits
+          # signed Cloudflare Worker URLs so the email button is true one-tap.
+          # When unset (e.g. Worker not deployed yet), notify.py falls back
+          # to the GitHub UI URL pattern automatically.
+          WORKER_URL:         ${{ secrets.WORKER_URL }}
+          TOGGLE_SECRET:      ${{ secrets.TOGGLE_SECRET }}
         # IMPORTANT: GH runs this with `bash -e {0}` by default, so any
         # non-zero exit aborts the step. dashboard.py uses its exit code to
         # COMMUNICATE STATUS (0=ok, 1=warn, 2=crit) — those are not script

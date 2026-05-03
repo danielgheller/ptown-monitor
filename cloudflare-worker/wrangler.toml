@@ -1,0 +1,13 @@
+# Cloudflare Worker config for the Ptown IN_PTOWN toggle endpoint.
+# Deploy with `wrangler deploy` from this directory after running
+# `wrangler login` and storing the GITHUB_TOKEN + TOGGLE_SECRET secrets.
+# See SETUP.md for the full bootstrap.
+
+name = "ptown-toggle"
+main = "worker.js"
+compatibility_date = "2025-09-01"
+
+# No vars block: GITHUB_TOKEN and TOGGLE_SECRET are managed as secrets so
+# they never land in the repo. Set them via:
+#   wrangler secret put GITHUB_TOKEN
+#   wrangler secret put TOGGLE_SECRET

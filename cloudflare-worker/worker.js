@@ -1,0 +1,232 @@
+// Ptown Monitor — IN_PTOWN toggle Cloudflare Worker.
+//
+// One-tap endpoint that flips the IN_PTOWN flag file in the
+// danielgheller/ptown-monitor repo from a link in an email. Email button
+// hits /arrive (creates the file) or /leave (deletes it); worker validates
+// an HMAC-signed token, then talks to the GitHub Contents API to perform
+// the commit. The next hourly run picks up the new state — and we also
+// configure the workflow to trigger on push of IN_PTOWN, so the change
+// takes effect within ~30s rather than waiting for the next :15 cron.
+//
+// Secrets (set via `wrangler secret put` or the dashboard):
+//   GITHUB_TOKEN   - fine-grained PAT, contents:write on the repo only
+//   TOGGLE_SECRET  - shared secret with notify.py for HMAC signing
+//
+// Token format (notify.py builds these, worker validates):
+//   t  = HMAC-SHA256(TOGGLE_SECRET, "<action>:<ts>")
+//   ts = unix epoch seconds (integer)
+// Tokens expire after TOKEN_TTL_SECONDS so a stale email link can't be
+// fired by an email scanner months later.
+
+const GH_OWNER = "danielgheller";
+const GH_REPO = "ptown-monitor";
+const IN_PTOWN_FILE = "IN_PTOWN";
+const TOKEN_TTL_SECONDS = 30 * 86400; // 30 days
+
+// File body when creating IN_PTOWN. Keep it self-documenting so anyone
+// browsing the repo (including Daniel six months from now) understands
+// what the presence of this file means.
+const IN_PTOWN_BODY =
+  "# IN_PTOWN\n\n" +
+  "Daniel is at the house. Cost-protection alerts are SUPPRESSED while\n" +
+  "this file exists. To leave, tap the \"I'm leaving Ptown\" button in any\n" +
+  "monitor email — or delete this file from the GitHub UI.\n";
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    // Map URL path → action. We accept /arrive and /leave (and a fallback
+    // root path that explains usage so a misclick doesn't look broken).
+    const action = url.pathname.replace(/^\/+/, "").toLowerCase();
+
+    if (action === "" || action === "favicon.ico") {
+      return htmlResponse(
+        "Ptown toggle endpoint. Tap the button in your monitor email.",
+        200
+      );
+    }
+    if (action !== "arrive" && action !== "leave") {
+      return htmlResponse(`Unknown action: ${action}`, 404);
+    }
+
+    const ts = url.searchParams.get("ts");
+    const t = url.searchParams.get("t");
+    if (!ts || !t) {
+      return expiredResponse(action, "missing token — link is malformed");
+    }
+    const tsNum = parseInt(ts, 10);
+    if (!Number.isFinite(tsNum)) {
+      return expiredResponse(action, "bad timestamp");
+    }
+    const now = Math.floor(Date.now() / 1000);
+    if (Math.abs(now - tsNum) > TOKEN_TTL_SECONDS) {
+      return expiredResponse(action, "this email link is older than 30 days");
+    }
+
+    const expected = await hmacHex(env.TOGGLE_SECRET, `${action}:${ts}`);
+    if (!constantTimeEqual(t, expected)) {
+      return expiredResponse(action, "signature didn't validate");
+    }
+
+    try {
+      if (action === "arrive") {
+        await ghCreateFile(env.GITHUB_TOKEN);
+        return htmlResponse(
+          "🏠 You're in Ptown. Cost-protection is now OFF — adjust everything however you like."
+        );
+      } else {
+        await ghDeleteFile(env.GITHUB_TOKEN);
+        return htmlResponse(
+          "✈️ You've left Ptown. Cost-protection is now ON — you'll get a WARN email if any device is bumped above baseline."
+        );
+      }
+    } catch (e) {
+      // Surface the GitHub API error inline AND offer the GH UI fallback,
+      // since the user already tapped expecting something to happen.
+      return expiredResponse(action, `GitHub API error: ${e.message}`);
+    }
+  },
+};
+
+// ---------- GitHub Contents API ----------
+async function ghCreateFile(token) {
+  const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${IN_PTOWN_FILE}`;
+  // GET first — if the file already exists, the action is a no-op (Daniel
+  // already flagged "in Ptown" via a previous tap or git push). Idempotent.
+  const head = await fetch(url, { headers: ghHeaders(token) });
+  if (head.status === 200) return;
+  if (head.status !== 404) {
+    throw new Error(`GET ${head.status}: ${await head.text().then(s => s.slice(0, 200))}`);
+  }
+  const body = JSON.stringify({
+    message: "I'm in Ptown",
+    content: btoa(IN_PTOWN_BODY),
+    branch: "main",
+  });
+  const resp = await fetch(url, {
+    method: "PUT",
+    headers: { ...ghHeaders(token), "Content-Type": "application/json" },
+    body,
+  });
+  if (!resp.ok) {
+    throw new Error(`PUT ${resp.status}: ${await resp.text().then(s => s.slice(0, 200))}`);
+  }
+}
+
+async function ghDeleteFile(token) {
+  const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${IN_PTOWN_FILE}`;
+  // GET to obtain the current SHA (required by the delete endpoint) and
+  // also to short-circuit when the file is already gone.
+  const head = await fetch(url, { headers: ghHeaders(token) });
+  if (head.status === 404) return;
+  if (head.status !== 200) {
+    throw new Error(`GET ${head.status}: ${await head.text().then(s => s.slice(0, 200))}`);
+  }
+  const data = await head.json();
+  const body = JSON.stringify({
+    message: "I'm leaving Ptown",
+    sha: data.sha,
+    branch: "main",
+  });
+  const resp = await fetch(url, {
+    method: "DELETE",
+    headers: { ...ghHeaders(token), "Content-Type": "application/json" },
+    body,
+  });
+  if (!resp.ok) {
+    throw new Error(`DELETE ${resp.status}: ${await resp.text().then(s => s.slice(0, 200))}`);
+  }
+}
+
+function ghHeaders(token) {
+  return {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+    "User-Agent": "ptown-toggle-worker",
+  };
+}
+
+// ---------- HMAC + crypto helpers ----------
+async function hmacHex(secret, message) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(message));
+  return [...new Uint8Array(sig)]
+    .map(b => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function constantTimeEqual(a, b) {
+  if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length) {
+    return false;
+  }
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
+
+// ---------- HTML responses ----------
+// Two kinds: success (green-ish) and expired/error (yellow-ish, with a
+// fallback button linking to the GitHub UI flow so Daniel can still flip
+// the file even if his email link is dead).
+function htmlResponse(message, status = 200) {
+  return new Response(pageShell({ heading: "Ptown Monitor", body: escapeHtml(message) }), {
+    status,
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
+}
+
+function expiredResponse(action, reason) {
+  // Fallback URL points at GitHub's normal create-file or delete-file UI.
+  // Daniel still has to tap "Commit changes" but at least the button works.
+  const fallback =
+    action === "arrive"
+      ? `https://github.com/${GH_OWNER}/${GH_REPO}/new/main?filename=${IN_PTOWN_FILE}`
+      : `https://github.com/${GH_OWNER}/${GH_REPO}/delete/main/${IN_PTOWN_FILE}`;
+  const verb = action === "arrive" ? "🏠 In Ptown" : "✈️ Leaving Ptown";
+  const body =
+    `<p style="margin:0 0 12px 0;">This link can't run automatically (${escapeHtml(reason)}).</p>` +
+    `<p style="margin:0 0 16px 0;">You can still flip the toggle by hand:</p>` +
+    `<a href="${escapeAttr(fallback)}" ` +
+    `style="display:inline-block;background:#111827;color:#fff;text-decoration:none;` +
+    `font-size:14px;font-weight:600;padding:10px 16px;border-radius:8px;">` +
+    `${escapeHtml(verb)} →</a>`;
+  return new Response(pageShell({ heading: "Link expired", body }), {
+    status: 410,
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
+}
+
+function pageShell({ heading, body }) {
+  return (
+    "<!DOCTYPE html><html><head><meta charset=\"utf-8\">" +
+    "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" +
+    "<title>Ptown Monitor</title></head>" +
+    "<body style=\"font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;" +
+    "background:#f5f5f7;margin:0;padding:40px 20px;color:#1a1a1a;\">" +
+    "<div style=\"max-width:480px;margin:0 auto;background:#fff;border-radius:12px;" +
+    "padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.08);\">" +
+    `<div style="font-size:18px;font-weight:600;margin-bottom:10px;">${escapeHtml(heading)}</div>` +
+    `<div style="font-size:15px;color:#374151;line-height:1.5;">${body}</div>` +
+    "</div></body></html>"
+  );
+}
+
+function escapeHtml(s) {
+  return String(s).replace(
+    /[&<>"']/g,
+    c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
+  );
+}
+function escapeAttr(s) {
+  return escapeHtml(s);
+}
