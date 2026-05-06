@@ -153,13 +153,14 @@ def _evaluate_hottub(device: dict, *, away: bool) -> tuple[str, str | None]:
         return Status.WARN, "no water temp reading"
     watercare = (extra.get("watercare") or "").lower()
     # Cost-protection branch: gated on the AWAY flag (single source of truth
-    # for "Daniel is not at the house"). Catches both an unauthorized setpoint
-    # change and a power-surge factory-reset to 104°F. Water check first
-    # because that's the actual cost; setpoint second to catch the early
-    # window before water has finished heating.
+    # for "Daniel is not at the house"). Key off SETPOINT only — both the
+    # cases this is meant to catch (unauthorized bump, power-surge factory
+    # reset to 104°F) raise the setpoint, so the setpoint check covers them.
+    # Water temp is intentionally NOT checked: after a legitimate "All away"
+    # the tub coasts down at ~4–5°F/day, so a water-temp clause produces
+    # several days of spurious WARNs even though the heater is off and no
+    # money is being spent.
     if away:
-        if cur > HOTTUB_AWAY_MAX_F:
-            return Status.WARN, f"water {cur:.1f}°F while away — heater bumped?"
         if setp is not None and setp > HOTTUB_AWAY_MAX_F:
             return Status.WARN, f"setpoint {setp:.1f}°F while away — heater bumped?"
     # Undershoot rule still uses watercare as its gate (not the AWAY file)
