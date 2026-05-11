@@ -1,6 +1,6 @@
 {
   "current": {
-    "timestamp": "2026-05-11T12:21:27+0000",
+    "timestamp": "2026-05-11T16:10:55+0000",
     "overall_status": "ok",
     "in_ptown": false,
     "systems": [
@@ -12,7 +12,7 @@
         "devices": [
           {
             "name": "guest floor",
-            "current_f": 61.4,
+            "current_f": 61.9,
             "setpoint_f": 41.0,
             "mode": "idle",
             "online": true,
@@ -22,7 +22,7 @@
           },
           {
             "name": "cabana floor",
-            "current_f": 57.3,
+            "current_f": 57.1,
             "setpoint_f": 41.0,
             "mode": "idle",
             "online": true,
@@ -32,7 +32,7 @@
           },
           {
             "name": "primary floor",
-            "current_f": 61.2,
+            "current_f": 60.7,
             "setpoint_f": 41.0,
             "mode": "idle",
             "online": true,
@@ -108,7 +108,7 @@
           },
           {
             "name": "Kitchen",
-            "current_f": 62.5,
+            "current_f": 62.6,
             "setpoint_f": 59.7,
             "mode": "Eco manual_eco, HVAC off",
             "online": true,
@@ -128,39 +128,6 @@
     ]
   },
   "history_hourly": [
-    {
-      "timestamp": "2026-05-09T18:04:01+0000",
-      "readings": {
-        "nuheat:guest floor": {
-          "set": 41.0,
-          "now": 60.4
-        },
-        "nuheat:cabana floor": {
-          "set": 41.0,
-          "now": 56.5
-        },
-        "nuheat:primary floor": {
-          "set": 41.0,
-          "now": 58.9
-        },
-        "hottub:Jacuzzi J-335": {
-          "set": 64.9,
-          "now": 80.1
-        },
-        "nest:Cabana": {
-          "set": 59.7,
-          "now": 60.4
-        },
-        "nest:Primary Bedroom": {
-          "set": 59.6,
-          "now": 61.5
-        },
-        "nest:Kitchen": {
-          "set": 59.7,
-          "now": 61.5
-        }
-      }
-    },
     {
       "timestamp": "2026-05-09T19:20:51+0000",
       "readings": {
@@ -919,6 +886,39 @@
           "now": 62.5
         }
       }
+    },
+    {
+      "timestamp": "2026-05-11T16:10:55+0000",
+      "readings": {
+        "nuheat:guest floor": {
+          "set": 41.0,
+          "now": 61.9
+        },
+        "nuheat:cabana floor": {
+          "set": 41.0,
+          "now": 57.1
+        },
+        "nuheat:primary floor": {
+          "set": 41.0,
+          "now": 60.7
+        },
+        "hottub:Jacuzzi J-335": {
+          "set": 64.9,
+          "now": 77.0
+        },
+        "nest:Cabana": {
+          "set": 59.7,
+          "now": 60.5
+        },
+        "nest:Primary Bedroom": {
+          "set": 59.6,
+          "now": 63.3
+        },
+        "nest:Kitchen": {
+          "set": 59.7,
+          "now": 62.6
+        }
+      }
     }
   ],
   "history_daily": [
@@ -1128,19 +1128,19 @@
     },
     {
       "date": "2026-05-11",
-      "timestamp": "2026-05-11T12:21:27+0000",
+      "timestamp": "2026-05-11T16:10:55+0000",
       "readings": {
         "nuheat:guest floor": {
           "set": 41.0,
-          "now": 61.4
+          "now": 61.9
         },
         "nuheat:cabana floor": {
           "set": 41.0,
-          "now": 57.3
+          "now": 57.1
         },
         "nuheat:primary floor": {
           "set": 41.0,
-          "now": 61.2
+          "now": 60.7
         },
         "hottub:Jacuzzi J-335": {
           "set": 64.9,
@@ -1156,10 +1156,10 @@
         },
         "nest:Kitchen": {
           "set": 59.7,
-          "now": 62.5
+          "now": 62.6
         }
       }
     }
   ],
-  "generated_at": "2026-05-11T12:21:28+0000"
+  "generated_at": "2026-05-11T16:10:55+0000"
 }
