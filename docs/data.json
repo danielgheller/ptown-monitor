@@ -1,6 +1,6 @@
 {
   "current": {
-    "timestamp": "2026-05-19T19:16:19+0000",
+    "timestamp": "2026-05-19T21:43:39+0000",
     "overall_status": "ok",
     "in_ptown": false,
     "systems": [
@@ -12,7 +12,7 @@
         "devices": [
           {
             "name": "guest floor",
-            "current_f": 73.2,
+            "current_f": 73.9,
             "setpoint_f": 41.0,
             "mode": "idle",
             "online": true,
@@ -22,7 +22,7 @@
           },
           {
             "name": "cabana floor",
-            "current_f": 64.0,
+            "current_f": 64.5,
             "setpoint_f": 41.0,
             "mode": "idle",
             "online": true,
@@ -32,7 +32,7 @@
           },
           {
             "name": "primary floor",
-            "current_f": 72.4,
+            "current_f": 73.6,
             "setpoint_f": 41.0,
             "mode": "idle",
             "online": true,
@@ -74,7 +74,7 @@
         "devices": [
           {
             "name": "Cabana",
-            "current_f": 67.5,
+            "current_f": 68.5,
             "setpoint_f": 59.7,
             "mode": "Eco manual_eco, HVAC off",
             "online": true,
@@ -91,7 +91,7 @@
           },
           {
             "name": "Primary Bedroom",
-            "current_f": 74.6,
+            "current_f": 76.6,
             "setpoint_f": 59.6,
             "mode": "Eco manual_eco, HVAC off",
             "online": true,
@@ -128,39 +128,6 @@
     ]
   },
   "history_hourly": [
-    {
-      "timestamp": "2026-05-17T09:59:13+0000",
-      "readings": {
-        "nuheat:guest floor": {
-          "set": 41.0,
-          "now": 63.0
-        },
-        "nuheat:cabana floor": {
-          "set": 41.0,
-          "now": 57.9
-        },
-        "nuheat:primary floor": {
-          "set": 41.0,
-          "now": 62.7
-        },
-        "hottub:Jacuzzi J-335": {
-          "set": 64.9,
-          "now": 73.0
-        },
-        "nest:Cabana": {
-          "set": 59.7,
-          "now": 61.5
-        },
-        "nest:Primary Bedroom": {
-          "set": 59.6,
-          "now": 64.4
-        },
-        "nest:Kitchen": {
-          "set": 59.7,
-          "now": 63.5
-        }
-      }
-    },
     {
       "timestamp": "2026-05-17T11:32:31+0000",
       "readings": {
@@ -919,6 +886,39 @@
           "now": 71.5
         }
       }
+    },
+    {
+      "timestamp": "2026-05-19T21:43:39+0000",
+      "readings": {
+        "nuheat:guest floor": {
+          "set": 41.0,
+          "now": 73.9
+        },
+        "nuheat:cabana floor": {
+          "set": 41.0,
+          "now": 64.5
+        },
+        "nuheat:primary floor": {
+          "set": 41.0,
+          "now": 73.6
+        },
+        "hottub:Jacuzzi J-335": {
+          "set": 64.9,
+          "now": 73.0
+        },
+        "nest:Cabana": {
+          "set": 59.7,
+          "now": 68.5
+        },
+        "nest:Primary Bedroom": {
+          "set": 59.6,
+          "now": 76.6
+        },
+        "nest:Kitchen": {
+          "set": 59.7,
+          "now": 71.5
+        }
+      }
     }
   ],
   "history_daily": [
@@ -1128,19 +1128,19 @@
     },
     {
       "date": "2026-05-19",
-      "timestamp": "2026-05-19T19:16:19+0000",
+      "timestamp": "2026-05-19T21:43:39+0000",
       "readings": {
         "nuheat:guest floor": {
           "set": 41.0,
-          "now": 73.2
+          "now": 73.9
         },
         "nuheat:cabana floor": {
           "set": 41.0,
-          "now": 64.0
+          "now": 64.5
         },
         "nuheat:primary floor": {
           "set": 41.0,
-          "now": 72.4
+          "now": 73.6
         },
         "hottub:Jacuzzi J-335": {
           "set": 64.9,
@@ -1148,11 +1148,11 @@
         },
         "nest:Cabana": {
           "set": 59.7,
-          "now": 67.5
+          "now": 68.5
         },
         "nest:Primary Bedroom": {
           "set": 59.6,
-          "now": 74.6
+          "now": 76.6
         },
         "nest:Kitchen": {
           "set": 59.7,
@@ -1161,5 +1161,5 @@
       }
     }
   ],
-  "generated_at": "2026-05-19T19:16:20+0000"
+  "generated_at": "2026-05-19T21:43:39+0000"
 }
