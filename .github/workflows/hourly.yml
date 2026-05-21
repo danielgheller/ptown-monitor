@@ -81,11 +81,12 @@ jobs:
           NEST_CLIENT_ID:     ${{ secrets.NEST_CLIENT_ID }}
           NEST_CLIENT_SECRET: ${{ secrets.NEST_CLIENT_SECRET }}
           NEST_REFRESH_TOKEN: ${{ secrets.NEST_REFRESH_TOKEN }}
-          # SmartThings PAT for the garage door (via OHD Anywhere → SmartThings).
-          # SMARTTHINGS_DEVICE_ID is optional; if absent, garage.py auto-discovers
-          # the door-capable device on each run.
-          SMARTTHINGS_TOKEN:     ${{ secrets.SMARTTHINGS_TOKEN }}
-          SMARTTHINGS_DEVICE_ID: ${{ secrets.SMARTTHINGS_DEVICE_ID }}
+          # SmartThings PAT — shared by garage (OHD Anywhere), Yale lock,
+          # and Caseta lighting. All three use the same read-only PAT.
+          # The _DEVICE_ID secrets are optional; absent → auto-discover each run.
+          SMARTTHINGS_TOKEN:           ${{ secrets.SMARTTHINGS_TOKEN }}
+          SMARTTHINGS_DEVICE_ID:       ${{ secrets.SMARTTHINGS_DEVICE_ID }}
+          SMARTTHINGS_LOCK_DEVICE_ID:  ${{ secrets.SMARTTHINGS_LOCK_DEVICE_ID }}
           RESEND_API_KEY:     ${{ secrets.RESEND_API_KEY }}
           NOTIFY_TO_EMAIL:    ${{ secrets.NOTIFY_TO_EMAIL }}
           # One-tap toggle URL plumbing — when both are set, notify.py emits

@@ -34,7 +34,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-SCRIPTS = ["nuheat", "hottub", "nest", "garage"]
+SCRIPTS = ["nuheat", "hottub", "nest", "garage", "lock", "caseta"]
 PER_SCRIPT_TIMEOUT = 60  # seconds
 
 # ---------- in-ptown toggle ----------
@@ -216,11 +216,60 @@ def _evaluate_garage(device: dict, *, away: bool) -> tuple[str, str | None]:
     return Status.WARN, f"unrecognized door state '{state}'"
 
 
+def _evaluate_lock(device: dict, *, away: bool) -> tuple[str, str | None]:
+    """Yale lock evaluator. Security-driven, like the garage:
+    unlocked while away = CRIT. Locked = OK. Jammed isn't escalated this
+    round (Daniel scoped it to just unlocked-while-away); it'll surface as
+    "unrecognized state" so we still notice. Battery isn't evaluated either —
+    intentionally minimal alerting per the May 2026 setup.
+    """
+    if not device.get("online"):
+        return Status.CRIT, "lock bridge offline"
+    state = (device.get("mode") or "").lower()
+    if state == "locked":
+        return Status.OK, None
+    if state in ("unlocked", "unlatched"):
+        if away:
+            return Status.CRIT, f"door {state} while away"
+        return Status.OK, None
+    if state in ("locking", "unlocking", "unlatching"):
+        # Transient — don't alert; next tick will see settled state.
+        return Status.OK, None
+    if state == "unknown":
+        return Status.WARN, "lock state unknown — sensor may need re-calibrating"
+    # Catch-all (includes "jammed"). Loud enough to notice without forcing CRIT.
+    return Status.WARN, f"unrecognized lock state '{state}'"
+
+
+def _evaluate_caseta(device: dict, *, away: bool) -> tuple[str, str | None]:
+    """Caseta dimmer/switch evaluator. Cost-protection rule (Daniel's
+    framing 2026-05-21): every Caseta device should be OFF when AWAY.
+    Any light on while away = WARN per device (the system overall_reason
+    rolls them up into a single subject-line fragment). When in Ptown,
+    lights are expected to be on; everything is OK.
+    """
+    if not device.get("online"):
+        return Status.WARN, "no reading"
+    state = (device.get("mode") or "").lower()
+    if state == "off":
+        return Status.OK, None
+    if state == "on":
+        if away:
+            level = (device.get("extra") or {}).get("level")
+            qualifier = f" ({level}%)" if isinstance(level, (int, float)) else ""
+            return Status.WARN, f"on while away{qualifier}"
+        return Status.OK, None
+    # "unknown" or anything else — surface but don't escalate to CRIT.
+    return Status.WARN, f"state {state!r}"
+
+
 EVALUATORS = {
     "nuheat": _evaluate_nuheat,
     "hottub": _evaluate_hottub,
     "nest": _evaluate_nest,
     "garage": _evaluate_garage,
+    "lock": _evaluate_lock,
+    "caseta": _evaluate_caseta,
 }
 
 SYSTEM_LABELS = {
@@ -228,6 +277,8 @@ SYSTEM_LABELS = {
     "hottub": "Hot tub",
     "nest": "Nest",
     "garage": "Garage door",
+    "lock": "Front door lock",
+    "caseta": "Caseta lights",
 }
 
 
@@ -285,6 +336,33 @@ def _render_text(aggregated: list[dict], *, use_emoji: bool) -> str:
 
         if sys_result.get("error"):
             lines.append(f"     ! {sys_result['error']}")
+            lines.append("")
+            continue
+
+        # Caseta has 40+ devices — listing each one explodes the email. Render
+        # a compact "N of M on" summary; list ONLY the on/non-OK ones so the
+        # email stays scannable from a phone lock screen.
+        if system == "caseta":
+            evaluated = sys_result["evaluated"]
+            total = len(evaluated)
+            on_items = [it for it in evaluated if (it["device"].get("mode") or "").lower() == "on"]
+            warn_items = [it for it in evaluated if it["status"] != Status.OK]
+            if total == 0:
+                lines.append("     (no devices reported)")
+            elif not on_items and not warn_items:
+                lines.append(f"     All {total} lights off")
+            else:
+                lines.append(f"     {len(on_items)} of {total} lights on")
+                # List each on/non-OK device, one per line, with the offender
+                # status if it tripped the evaluator.
+                for it in (warn_items if warn_items else on_items):
+                    dev = it["device"]
+                    level = (dev.get("extra") or {}).get("level")
+                    level_str = f" ({level}%)" if isinstance(level, (int, float)) else ""
+                    marker = ""
+                    if it["status"] != Status.OK:
+                        marker = f"  ← {glyphs[it['status']]} {it['reason']}"
+                    lines.append(f"       · {dev.get('name', '?')}{level_str}{marker}")
             lines.append("")
             continue
 

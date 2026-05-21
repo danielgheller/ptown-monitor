@@ -7,7 +7,9 @@ vendor's cloud API and prints the current state of the devices in that system.
 - `hottub.py` — Jacuzzi hot tub via SmartTub cloud ✅
 - `nest.py` — Google Nest thermostats (Smart Device Management API) ✅
 - `garage.py` — Overhead Door garage via OHD Anywhere → SmartThings ✅
-- `all.py` — runs all four in parallel and prints a combined status ✅
+- `lock.py` — Yale front door lock via Yale Access → SmartThings ✅
+- `caseta.py` — Lutron Caseta lighting via Caseta Bridge → SmartThings ✅
+- `all.py` — runs all six in parallel and prints a combined status ✅
 
 ## One-time setup
 
@@ -30,6 +32,8 @@ installs any needed packages:
     ./ptown hottub        # hot tub
     ./ptown nest          # Nest thermostats
     ./ptown garage        # Overhead Door garage (via SmartThings)
+    ./ptown lock          # Yale front door lock (via SmartThings)
+    ./ptown caseta        # Lutron Caseta lights (via SmartThings)
     ./ptown all           # everything in parallel (recommended daily check)
 
 Each command supports `--raw` for debugging if output looks wrong:
@@ -95,9 +99,47 @@ Garage status feeds the dashboard: **door open while away** is a CRIT
 `./ptown garage --discover` lists every device the token can see, useful
 if more than one door-capable device shows up.
 
+## Front door lock (Yale via SmartThings)
+
+We tried the `yalexs` Python library first, but Yale migrated all individual
+accounts to OAuth-only auth in late 2024 — the legacy password endpoint
+returns 403 and yalexs has no OAuth support. We then discovered Yale's
+SmartThings integration is alive after all (despite the consumer "Works
+With" page in the Yale Access app not showing it), so we route lock state
+through SmartThings just like the garage. Same PAT, same script pattern.
+
+Setup (one-time):
+
+1. In the Yale Access app, link the lock to SmartThings via Settings →
+   Integrations → SmartThings. Authorize with your Samsung account.
+2. Run `./ptown lock` once — it auto-discovers the lock-capable device on
+   your SmartThings account and prints the device ID.
+3. If your account has more than one lock (e.g., multiple properties),
+   `./ptown lock` will list them and ask you to pin one. Set
+   `SMARTTHINGS_LOCK_DEVICE_ID=<uuid>` in `.env`. Same secret name lives
+   in GH Actions.
+
+Dashboard rule: **unlocked while away** is a CRIT. Locked / locking /
+unlocking are OK. Jammed or unknown surface as WARN.
+
+## Caseta lights (Lutron via SmartThings)
+
+40+ Caseta dimmers/switches pair to SmartThings via the Caseta Smart
+Bridge's built-in SmartThings integration. `caseta.py` auto-discovers
+all `switch`-capable devices each run (excluding the garage door, which
+is `doorControl`) and reports on/off state per device. Dashboard
+renders a compact "N of M on" summary instead of one line per device.
+
+Dashboard rule: any Caseta device on **while away** = WARN, listed in
+the email body. When in Ptown, all-on is OK.
+
+No new credentials needed — caseta.py uses the same `SMARTTHINGS_TOKEN`
+as garage and lock.
+
 ## Notes
 
-- `nuheat.py`, `nest.py`, and `garage.py` are stdlib-only. `hottub.py`
+- `nuheat.py`, `nest.py`, `garage.py`, `lock.py`, and `caseta.py` are
+  stdlib-only — they all hit cloud APIs via plain HTTPS. `hottub.py`
   uses `python-smarttub` + `aiohttp`, installed automatically into
   `./.venv` on first run.
 - Credentials live in `.env` alongside the scripts; never commit that file.

@@ -112,7 +112,8 @@ STATUS_PREFIX = {
 }
 
 
-_SYSTEM_SHORT = {"nuheat": "floors", "hottub": "tub", "nest": "indoor", "garage": "garage"}
+_SYSTEM_SHORT = {"nuheat": "floors", "hottub": "tub", "nest": "indoor",
+                 "garage": "garage", "lock": "lock", "caseta": "lights"}
 
 
 def _bad_device_summary(sys_result: dict) -> str | None:
@@ -150,6 +151,22 @@ def _bad_device_summary(sys_result: dict) -> str | None:
             return "garage offline"
         state = (dev.get("mode") or "unknown").lower()
         return f"garage {state}"
+    # Lock: same pattern. "lock unlocked" is the security signal we want
+    # screaming from the subject line when away.
+    if system == "lock":
+        if not dev.get("online", True):
+            return "lock offline"
+        state = (dev.get("mode") or "unknown").lower()
+        return f"lock {state}"
+    # Caseta: roll all on-while-away devices into a single count. Per-device
+    # names would blow the subject line; "3 lights on" tells Daniel enough
+    # to know it's worth tapping in.
+    if system == "caseta":
+        devices = sys_result.get("devices") or []
+        on_count = sum(1 for d in devices if (d.get("mode") or "").lower() == "on")
+        if on_count:
+            return f"{on_count} lights on"
+        # Fall through to default; covers offline/unknown edge cases.
     # Offline / no-reading case: prefer the human reason over a literal "?"
     if not isinstance(cur, (int, float)):
         if not dev.get("online", True):
@@ -277,13 +294,36 @@ def _build_body(dashboard: dict, *, ctx: dict) -> str:
     for sys_result in dashboard.get("systems", []):
         system = sys_result.get("system", "?")
         label_map = {"nuheat": "Heated floors", "hottub": "Hot tub", "nest": "Nest",
-                     "garage": "Garage door"}
+                     "garage": "Garage door", "lock": "Front door lock",
+                     "caseta": "Caseta lights"}
         label = label_map.get(system, system.title())
         overall = sys_result.get("overall_status", "ok")
         lines.append(f"{tag.get(overall, '[ ?? ]')} {label}")
 
         if sys_result.get("error"):
             lines.append(f"     ! {sys_result['error']}")
+            lines.append("")
+            continue
+
+        # Caseta: 40+ devices would blow the body. Compact summary + list of
+        # on-or-non-OK devices only, mirroring dashboard.py's rendering.
+        if system == "caseta":
+            devices = sys_result.get("devices") or []
+            total = len(devices)
+            on_devs = [d for d in devices if (d.get("mode") or "").lower() == "on"]
+            warn_devs = [d for d in devices if d.get("status") not in (None, "ok")]
+            if total == 0:
+                lines.append("     (no devices reported)")
+            elif not on_devs and not warn_devs:
+                lines.append(f"     All {total} lights off")
+            else:
+                lines.append(f"     {len(on_devs)} of {total} lights on")
+                for dev in (warn_devs if warn_devs else on_devs):
+                    name = dev.get("name", "?")
+                    level = (dev.get("extra") or {}).get("level")
+                    level_str = f" ({level}%)" if isinstance(level, (int, float)) else ""
+                    reason = f" — {dev['reason']}" if dev.get("reason") else ""
+                    lines.append(f"       · {name}{level_str}{reason}")
             lines.append("")
             continue
 
@@ -334,7 +374,8 @@ _STATUS_COLORS = {
     "crit": {"bg": "#fee2e2", "fg": "#991b1b", "dot": "#dc2626", "label": "CRIT"},
 }
 _SYSTEM_LABELS = {"nuheat": "Heated floors", "hottub": "Hot tub", "nest": "Nest",
-                  "garage": "Garage door"}
+                  "garage": "Garage door", "lock": "Front door lock",
+                  "caseta": "Caseta lights"}
 
 
 def _fmt_f(v) -> str:
@@ -525,6 +566,45 @@ def _build_html_body(dashboard: dict, dashboard_url: str, *, ctx: dict) -> str:
                 '<div style="font-size:13px;color:#991b1b;padding:8px 0 2px 0;">'
                 f'! {err}</div>'
             )
+        elif system == "caseta":
+            # Compact Caseta layout: "N of M on" header pill + per-on-device
+            # list below. Avoids the 40-row pill explosion that the standard
+            # per-device renderer would produce for Caseta.
+            devices = sys_result.get("devices") or []
+            total = len(devices)
+            on_devs = [d for d in devices if (d.get("mode") or "").lower() == "on"]
+            warn_devs = [d for d in devices if d.get("status") not in (None, "ok")]
+            summary_color = sm if on_devs or warn_devs else _STATUS_COLORS["ok"]
+            if total == 0:
+                summary_text = "(no devices reported)"
+            elif not on_devs and not warn_devs:
+                summary_text = f"All {total} lights off"
+            else:
+                summary_text = f"{len(on_devs)} of {total} lights on"
+            parts.append(
+                f'<div style="font-size:13px;color:#374151;padding:6px 0 4px 0;">'
+                f'{html.escape(summary_text)}</div>'
+            )
+            shown = warn_devs if warn_devs else on_devs
+            for dev in shown:
+                name = html.escape(dev.get("name", "?"))
+                level = (dev.get("extra") or {}).get("level")
+                level_str = (
+                    f' <span style="color:#9ca3af;">({int(level)}%)</span>'
+                    if isinstance(level, (int, float)) else ""
+                )
+                dev_status = dev.get("status", "ok")
+                dm = _STATUS_COLORS.get(dev_status, _STATUS_COLORS["ok"])
+                color = dm["fg"] if dev_status != "ok" else "#374151"
+                reason = (
+                    f' <span style="color:{dm["fg"]};">— {html.escape(dev["reason"])}</span>'
+                    if dev.get("reason") else ""
+                )
+                parts.append(
+                    f'<div style="font-size:12px;color:{color};padding:2px 0 2px 12px;'
+                    f'border-top:1px solid #f3f4f6;">'
+                    f'· {name}{level_str}{reason}</div>'
+                )
         else:
             devices = sys_result.get("devices") or []
             for dev in devices:
