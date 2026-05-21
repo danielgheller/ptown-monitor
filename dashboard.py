@@ -34,7 +34,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-SCRIPTS = ["nuheat", "hottub", "nest"]
+SCRIPTS = ["nuheat", "hottub", "nest", "garage"]
 PER_SCRIPT_TIMEOUT = 60  # seconds
 
 # ---------- in-ptown toggle ----------
@@ -192,16 +192,42 @@ def _evaluate_nest(device: dict, *, away: bool) -> tuple[str, str | None]:
     return Status.OK, None
 
 
+def _evaluate_garage(device: dict, *, away: bool) -> tuple[str, str | None]:
+    """Garage door evaluator. Security-driven, not cost-driven:
+    a garage left open while no one's at the house is a CRIT regardless of
+    the cost-protection mode (that's about heating, this is about a wide-open
+    door to the house). When in Ptown, the door being open is OK — the user
+    is presumably using it.
+    """
+    if not device.get("online"):
+        return Status.CRIT, "offline"
+    state = (device.get("mode") or "").lower()
+    if state == "unknown":
+        # Aladdin Connect's "unknown" usually means the door tilt sensor needs
+        # to be cycled. Don't escalate to CRIT for that — warn.
+        return Status.WARN, "sensor state unknown — cycle the door once on-site"
+    if state in ("open", "opening"):
+        if away:
+            return Status.CRIT, f"door {state} while away"
+        return Status.OK, None
+    if state in ("closed", "closing"):
+        return Status.OK, None
+    # Any other value we haven't seen: be loud about it so we notice.
+    return Status.WARN, f"unrecognized door state '{state}'"
+
+
 EVALUATORS = {
     "nuheat": _evaluate_nuheat,
     "hottub": _evaluate_hottub,
     "nest": _evaluate_nest,
+    "garage": _evaluate_garage,
 }
 
 SYSTEM_LABELS = {
     "nuheat": "Heated floors",
     "hottub": "Hot tub",
     "nest": "Nest",
+    "garage": "Garage door",
 }
 
 
@@ -265,18 +291,31 @@ def _render_text(aggregated: list[dict], *, use_emoji: bool) -> str:
         for item in sys_result["evaluated"]:
             dev = item["device"]
             name = dev.get("name", "?")
-            cur = _fmt_f(dev.get("current_f"))
-            setp = _fmt_f(dev.get("setpoint_f"))
+            cur_val = dev.get("current_f")
+            setp_val = dev.get("setpoint_f")
             mode = dev.get("mode") or ""
             online = dev.get("online", True)
             offline_marker = "" if online else "  OFFLINE"
-            detail = f"({mode})" if mode else ""
             status_marker = ""
             if item["status"] != Status.OK:
                 status_marker = f"  ← {glyphs[item['status']]} {item['reason']}"
-            lines.append(f"     {name:<20} {cur}  (set {setp}, {mode}){offline_marker}{status_marker}"
-                         if mode else
-                         f"     {name:<20} {cur}  (set {setp}){offline_marker}{status_marker}")
+
+            # Non-temperature devices (e.g. garage door) render mode-only.
+            if cur_val is None and setp_val is None:
+                extra = dev.get("extra", {}) or {}
+                battery = extra.get("battery_level")
+                bat_str = f"  battery {battery}%" if battery is not None else ""
+                lines.append(
+                    f"     {name:<20} {mode.upper():<10}{bat_str}{offline_marker}{status_marker}"
+                )
+            else:
+                cur = _fmt_f(cur_val)
+                setp = _fmt_f(setp_val)
+                lines.append(
+                    f"     {name:<20} {cur}  (set {setp}, {mode}){offline_marker}{status_marker}"
+                    if mode else
+                    f"     {name:<20} {cur}  (set {setp}){offline_marker}{status_marker}"
+                )
         lines.append("")
 
     # Overall verdict

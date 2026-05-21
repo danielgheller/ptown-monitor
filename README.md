@@ -6,7 +6,8 @@ vendor's cloud API and prints the current state of the devices in that system.
 - `nuheat.py` — heated floors (Nuheat Signature thermostats) ✅
 - `hottub.py` — Jacuzzi hot tub via SmartTub cloud ✅
 - `nest.py` — Google Nest thermostats (Smart Device Management API) ✅
-- `all.py` — runs all three in parallel and prints a combined status ✅
+- `garage.py` — Overhead Door garage via OHD Anywhere → SmartThings ✅
+- `all.py` — runs all four in parallel and prints a combined status ✅
 
 ## One-time setup
 
@@ -28,7 +29,8 @@ installs any needed packages:
     ./ptown nuheat        # heated floors
     ./ptown hottub        # hot tub
     ./ptown nest          # Nest thermostats
-    ./ptown all           # all three in parallel (recommended daily check)
+    ./ptown garage        # Overhead Door garage (via SmartThings)
+    ./ptown all           # everything in parallel (recommended daily check)
 
 Each command supports `--raw` for debugging if output looks wrong:
 
@@ -65,10 +67,39 @@ The freeze-protect / pipe-risk alerts (RED if a floor < 35°F or a Nest < 40°F)
 run all the time regardless of the toggle — those are about preventing damage,
 not waste.
 
+## Garage door (Overhead Door / OHD Anywhere)
+
+Genie cut off direct API access to Aladdin Connect / OHD Anywhere in
+January 2024 — the old `aladdin-connect` Python libraries no longer work.
+We route through Samsung SmartThings, which Genie still supports as a
+"Works With" partner.
+
+One-time setup:
+
+1. In the **OHD Anywhere app** → **Works With** → **Samsung SmartThings**,
+   sign in to a free Samsung account and authorize the link.
+2. Open the **SmartThings app**, confirm the garage door device appears
+   and reads open/closed correctly. Note the device's display name.
+3. At https://account.smartthings.com/tokens, generate a Personal Access
+   Token named `ptown-monitor`. Check **Devices: List all devices** and
+   **Devices: See all devices**. Skip the write/control scopes — we don't
+   need them for read-only monitoring.
+4. Paste the token into `.env` as `SMARTTHINGS_TOKEN=...`.
+5. Run `./ptown garage` once. It will auto-discover the device, print
+   the ID, and tell you to add `SMARTTHINGS_DEVICE_ID=<uuid>` to `.env`
+   to pin it.
+
+Garage status feeds the dashboard: **door open while away** is a CRIT
+(security, not cost). Door state while in Ptown is informational only.
+
+`./ptown garage --discover` lists every device the token can see, useful
+if more than one door-capable device shows up.
+
 ## Notes
 
-- `nuheat.py` is stdlib-only. `hottub.py` uses `python-smarttub` +
-  `aiohttp`, installed automatically into `./.venv` on first run.
+- `nuheat.py`, `nest.py`, and `garage.py` are stdlib-only. `hottub.py`
+  uses `python-smarttub` + `aiohttp`, installed automatically into
+  `./.venv` on first run.
 - Credentials live in `.env` alongside the scripts; never commit that file.
 - If a vendor rotates their API shape, `--raw` is the quickest way to see
   what changed.

@@ -12,3 +12,11 @@ __pycache__/
 # Runtime state — persisted via GitHub Actions cache between runs.
 # Safe to delete locally; will be regenerated on next run.
 notify-state.json
+
+# Wrangler (Cloudflare Workers CLI) build + auth cache. Not secret — the
+# account.json holds an account ID — but no reason to ship it in the repo.
+cloudflare-worker/.wrangler/
+
+# notify.py --preview debug output. Renders a real email body locally for
+# styling tweaks; not meant to be committed.
+email_preview.html

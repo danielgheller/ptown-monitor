@@ -112,7 +112,7 @@ STATUS_PREFIX = {
 }
 
 
-_SYSTEM_SHORT = {"nuheat": "floors", "hottub": "tub", "nest": "indoor"}
+_SYSTEM_SHORT = {"nuheat": "floors", "hottub": "tub", "nest": "indoor", "garage": "garage"}
 
 
 def _bad_device_summary(sys_result: dict) -> str | None:
@@ -143,6 +143,13 @@ def _bad_device_summary(sys_result: dict) -> str | None:
     dev = bad[0]
     system = sys_result.get("system", "?")
     cur = dev.get("current_f")
+    # Garage: no temps; surface the door state directly so the subject reads
+    # "garage open" / "garage opening" — that's exactly the triage signal.
+    if system == "garage":
+        if not dev.get("online", True):
+            return "garage offline"
+        state = (dev.get("mode") or "unknown").lower()
+        return f"garage {state}"
     # Offline / no-reading case: prefer the human reason over a literal "?"
     if not isinstance(cur, (int, float)):
         if not dev.get("online", True):
@@ -269,7 +276,8 @@ def _build_body(dashboard: dict, *, ctx: dict) -> str:
 
     for sys_result in dashboard.get("systems", []):
         system = sys_result.get("system", "?")
-        label_map = {"nuheat": "Heated floors", "hottub": "Hot tub", "nest": "Nest"}
+        label_map = {"nuheat": "Heated floors", "hottub": "Hot tub", "nest": "Nest",
+                     "garage": "Garage door"}
         label = label_map.get(system, system.title())
         overall = sys_result.get("overall_status", "ok")
         lines.append(f"{tag.get(overall, '[ ?? ]')} {label}")
@@ -284,11 +292,15 @@ def _build_body(dashboard: dict, *, ctx: dict) -> str:
             cur = dev.get("current_f")
             setp = dev.get("setpoint_f")
             mode = dev.get("mode") or ""
-            cur_s = f"{cur:5.1f}°F" if cur is not None else "   ? °F"
-            set_s = f"{setp:5.1f}°F" if setp is not None else "   ? °F"
             detail = f" — {dev['reason']}" if dev.get("reason") else ""
             suffix = f"  [{dev.get('status', 'ok').upper()}]" if dev.get("status") not in (None, "ok") else ""
-            line = f"     {name:<20} {cur_s}  (set {set_s}, {mode}){suffix}{detail}"
+            # Non-temperature devices (garage door) render mode-only.
+            if cur is None and setp is None:
+                line = f"     {name:<20} {mode.upper()}{suffix}{detail}"
+            else:
+                cur_s = f"{cur:5.1f}°F" if cur is not None else "   ? °F"
+                set_s = f"{setp:5.1f}°F" if setp is not None else "   ? °F"
+                line = f"     {name:<20} {cur_s}  (set {set_s}, {mode}){suffix}{detail}"
             lines.append(line)
         lines.append("")
 
@@ -321,7 +333,8 @@ _STATUS_COLORS = {
     "warn": {"bg": "#fef3c7", "fg": "#92400e", "dot": "#d97706", "label": "WARN"},
     "crit": {"bg": "#fee2e2", "fg": "#991b1b", "dot": "#dc2626", "label": "CRIT"},
 }
-_SYSTEM_LABELS = {"nuheat": "Heated floors", "hottub": "Hot tub", "nest": "Nest"}
+_SYSTEM_LABELS = {"nuheat": "Heated floors", "hottub": "Hot tub", "nest": "Nest",
+                  "garage": "Garage door"}
 
 
 def _fmt_f(v) -> str:
@@ -519,45 +532,75 @@ def _build_html_body(dashboard: dict, dashboard_url: str, *, ctx: dict) -> str:
                 mode = html.escape(dev.get("mode") or "")
                 dev_status = dev.get("status", "ok")
                 dm = _STATUS_COLORS.get(dev_status, _STATUS_COLORS["ok"])
-                cur_s = _fmt_f(dev.get("current_f"))
-                set_s = _fmt_f(dev.get("setpoint_f"))
-                # NOW pill gets tinted if this specific device is off-target;
-                # SET pill stays neutral since setpoint isn't "wrong" per se.
-                now_bg = dm["bg"] if dev_status != "ok" else "#f9fafb"
-                now_border = dm["dot"] if dev_status != "ok" else "#e5e7eb"
-                now_fg = dm["fg"] if dev_status != "ok" else "#111827"
+                cur_val = dev.get("current_f")
+                setp_val = dev.get("setpoint_f")
 
-                parts.append(
-                    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
-                    'style="border-collapse:collapse;border-top:1px solid #f3f4f6;">'
-                    '<tr>'
-                    # Device name + mode (mode is a small grey subtitle, like "heat", "standby")
-                    '<td align="left" style="padding:10px 0;vertical-align:middle;'
-                    'font-size:13px;color:#374151;">'
-                    f'{name}'
-                    + (f'<div style="font-size:11px;color:#9ca3af;margin-top:2px;">{mode}</div>'
-                       if mode else '')
-                    + '</td>'
-                    # SET pill
-                    '<td align="right" width="82" style="padding:8px 0 8px 6px;vertical-align:middle;">'
-                    '<div style="background:#f3f4f6;border:1px solid #e5e7eb;'
-                    'border-radius:6px;padding:6px 10px;text-align:center;">'
-                    '<div style="font-size:9px;color:#6b7280;font-weight:700;letter-spacing:0.5px;">SET</div>'
-                    f'<div style="font-size:14px;font-weight:600;color:#111827;'
-                    f'font-variant-numeric:tabular-nums;">{set_s}</div>'
-                    '</div>'
-                    '</td>'
-                    # NOW pill
-                    '<td align="right" width="82" style="padding:8px 0 8px 6px;vertical-align:middle;">'
-                    f'<div style="background:{now_bg};border:1px solid {now_border};'
-                    f'border-radius:6px;padding:6px 10px;text-align:center;">'
-                    '<div style="font-size:9px;color:#6b7280;font-weight:700;letter-spacing:0.5px;">NOW</div>'
-                    f'<div style="font-size:14px;font-weight:600;color:{now_fg};'
-                    f'font-variant-numeric:tabular-nums;">{cur_s}</div>'
-                    '</div>'
-                    '</td>'
-                    '</tr></table>'
-                )
+                # Non-temperature device (garage door): single STATE pill
+                # instead of SET / NOW. The pill tints with the device status
+                # so a CRIT door-open glows red on the lock-screen preview.
+                if cur_val is None and setp_val is None:
+                    state_label = (dev.get("mode") or "unknown").upper()
+                    pill_bg = dm["bg"] if dev_status != "ok" else "#f9fafb"
+                    pill_border = dm["dot"] if dev_status != "ok" else "#e5e7eb"
+                    pill_fg = dm["fg"] if dev_status != "ok" else "#111827"
+                    parts.append(
+                        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
+                        'style="border-collapse:collapse;border-top:1px solid #f3f4f6;">'
+                        '<tr>'
+                        '<td align="left" style="padding:10px 0;vertical-align:middle;'
+                        'font-size:13px;color:#374151;">'
+                        f'{name}'
+                        '</td>'
+                        '<td align="right" width="120" style="padding:8px 0 8px 6px;vertical-align:middle;">'
+                        f'<div style="background:{pill_bg};border:1px solid {pill_border};'
+                        f'border-radius:6px;padding:6px 10px;text-align:center;">'
+                        '<div style="font-size:9px;color:#6b7280;font-weight:700;letter-spacing:0.5px;">STATE</div>'
+                        f'<div style="font-size:14px;font-weight:600;color:{pill_fg};">'
+                        f'{html.escape(state_label)}</div>'
+                        '</div>'
+                        '</td>'
+                        '</tr></table>'
+                    )
+                else:
+                    cur_s = _fmt_f(cur_val)
+                    set_s = _fmt_f(setp_val)
+                    # NOW pill gets tinted if this specific device is off-target;
+                    # SET pill stays neutral since setpoint isn't "wrong" per se.
+                    now_bg = dm["bg"] if dev_status != "ok" else "#f9fafb"
+                    now_border = dm["dot"] if dev_status != "ok" else "#e5e7eb"
+                    now_fg = dm["fg"] if dev_status != "ok" else "#111827"
+
+                    parts.append(
+                        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
+                        'style="border-collapse:collapse;border-top:1px solid #f3f4f6;">'
+                        '<tr>'
+                        # Device name + mode (mode is a small grey subtitle, like "heat", "standby")
+                        '<td align="left" style="padding:10px 0;vertical-align:middle;'
+                        'font-size:13px;color:#374151;">'
+                        f'{name}'
+                        + (f'<div style="font-size:11px;color:#9ca3af;margin-top:2px;">{mode}</div>'
+                           if mode else '')
+                        + '</td>'
+                        # SET pill
+                        '<td align="right" width="82" style="padding:8px 0 8px 6px;vertical-align:middle;">'
+                        '<div style="background:#f3f4f6;border:1px solid #e5e7eb;'
+                        'border-radius:6px;padding:6px 10px;text-align:center;">'
+                        '<div style="font-size:9px;color:#6b7280;font-weight:700;letter-spacing:0.5px;">SET</div>'
+                        f'<div style="font-size:14px;font-weight:600;color:#111827;'
+                        f'font-variant-numeric:tabular-nums;">{set_s}</div>'
+                        '</div>'
+                        '</td>'
+                        # NOW pill
+                        '<td align="right" width="82" style="padding:8px 0 8px 6px;vertical-align:middle;">'
+                        f'<div style="background:{now_bg};border:1px solid {now_border};'
+                        f'border-radius:6px;padding:6px 10px;text-align:center;">'
+                        '<div style="font-size:9px;color:#6b7280;font-weight:700;letter-spacing:0.5px;">NOW</div>'
+                        f'<div style="font-size:14px;font-weight:600;color:{now_fg};'
+                        f'font-variant-numeric:tabular-nums;">{cur_s}</div>'
+                        '</div>'
+                        '</td>'
+                        '</tr></table>'
+                    )
                 if dev.get("reason") and dev_status != "ok":
                     reason = html.escape(dev["reason"])
                     parts.append(

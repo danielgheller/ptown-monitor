@@ -53,6 +53,9 @@ jobs:
           NEST_CLIENT_ID:     ${{ secrets.NEST_CLIENT_ID }}
           NEST_CLIENT_SECRET: ${{ secrets.NEST_CLIENT_SECRET }}
           NEST_REFRESH_TOKEN: ${{ secrets.NEST_REFRESH_TOKEN }}
+          # SmartThings PAT for the garage door (via OHD Anywhere → SmartThings).
+          SMARTTHINGS_TOKEN:     ${{ secrets.SMARTTHINGS_TOKEN }}
+          SMARTTHINGS_DEVICE_ID: ${{ secrets.SMARTTHINGS_DEVICE_ID }}
           RESEND_API_KEY:     ${{ secrets.RESEND_API_KEY }}
           NOTIFY_TO_EMAIL:    ${{ secrets.NOTIFY_TO_EMAIL }}
           # See hourly.yml — when configured, notify.py emits signed

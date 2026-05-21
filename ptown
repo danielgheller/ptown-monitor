@@ -5,7 +5,8 @@
 #   ./ptown nuheat          # check heated floors
 #   ./ptown hottub          # check hot tub
 #   ./ptown nest            # check Nest thermostats
-#   ./ptown all             # run all three in parallel and print a combined report
+#   ./ptown garage          # check Overhead Door garage (via SmartThings)
+#   ./ptown all             # run all four in parallel and print a combined report
 #   ./ptown dashboard       # friendly traffic-light dashboard (green/yellow/red per system)
 #   ./ptown notify          # email the status (only if WARN/CRIT)
 #   ./ptown notify --daily  # email the status (always — for the daily summary)
@@ -24,7 +25,7 @@ cd "$HERE"
 
 if [[ $# -lt 1 ]]; then
     echo "Usage: ./ptown <command> [flags]" >&2
-    echo "       commands: nuheat, hottub, nest, all, dashboard, notify, build" >&2
+    echo "       commands: nuheat, hottub, nest, garage, all, dashboard, notify, build" >&2
     exit 64
 fi
 
