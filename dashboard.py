@@ -69,15 +69,17 @@ FLOOR_MIN_OK_F = 35.0
 HOTTUB_MAX_UNDERSHOOT_F = 8.0
 
 # Cost-protection thresholds — fire WARN when AWAY flag is set AND a device's
-# setpoint or current temp climbs above the unattended baseline. Daniel's
-# numbers (2026-05-02): tight enough that any meaningful nudge from baseline
-# trips an alert.
-#   Floors: freeze-protect baseline is 41°F → anything above is unintended heat.
-#   Nest:   eco baseline is ~60°F → setpoint nudge upward is paid heat.
-#   Tub:    65°F is comfortably above ambient drift but well below use temp;
-#           also catches a power-surge factory-reset to 104°F.
+# setpoint or current temp climbs above (or below, for cooling) the unattended
+# baseline. Daniel's numbers: tight enough that any meaningful nudge from
+# baseline trips an alert.
+#   Floors:    freeze-protect baseline is 41°F → anything above is unintended heat.
+#   Nest heat: eco baseline is ~60°F → setpoint nudge upward is paid heat.
+#   Nest cool: eco-cool baseline is ~84°F → setpoint nudge below 82°F is paid AC.
+#   Tub:       65°F is comfortably above ambient drift but well below use temp;
+#              also catches a power-surge factory-reset to 104°F.
 FLOOR_AWAY_MAX_SETPOINT_F = 41.0
-NEST_AWAY_MAX_SETPOINT_F = 60.0
+NEST_AWAY_MAX_HEAT_SETPOINT_F = 60.0
+NEST_AWAY_MIN_COOL_SETPOINT_F = 82.0
 HOTTUB_AWAY_MAX_F = 65.0
 
 
@@ -187,8 +189,45 @@ def _evaluate_nest(device: dict, *, away: bool) -> tuple[str, str | None]:
         return Status.CRIT, f"{cur:.1f}°F — pipe-freeze risk"
     if cur < NEST_MIN_OK_F:
         return Status.WARN, f"{cur:.1f}°F — getting cold indoors"
-    if away and setp is not None and setp > NEST_AWAY_MAX_SETPOINT_F:
-        return Status.WARN, f"setpoint {setp:.1f}°F while away — heating bumped?"
+
+    if not away:
+        return Status.OK, None
+
+    extra = device.get("extra") or {}
+    thermostat_mode = (extra.get("thermostat_mode") or "").lower()
+    eco_mode = (extra.get("eco_mode") or "").lower()
+    hvac_status = (extra.get("hvac_status") or "").lower()
+
+    # Manual Eco is the desired away state — no cost warning.
+    if eco_mode and eco_mode != "off":
+        return Status.OK, None
+
+    # Auto-eco false-positive guard. The SDM API doesn't surface Nest's
+    # Home/Away Assist auto-eco state — it keeps reporting thermostat_mode =
+    # HEAT (or COOL) with the user's saved setpoint, even when auto-eco is
+    # actively suppressing the call for heat/cool. Detect this by side effect:
+    # if HVAC is idle while the room is on the "wrong side" of the saved
+    # setpoint, something (auto-eco, a schedule, etc.) is overriding the
+    # setpoint and we aren't actually paying for it. Skip the cost warning.
+    if hvac_status == "off" and setp is not None:
+        if thermostat_mode == "heat" and cur < setp:
+            return Status.OK, None
+        if thermostat_mode == "cool" and cur > setp:
+            return Status.OK, None
+
+    # Cost-protection — direction depends on heat vs cool mode.
+    if thermostat_mode == "heat":
+        if setp is not None and setp > NEST_AWAY_MAX_HEAT_SETPOINT_F:
+            return Status.WARN, (
+                f"heat setpoint {setp:.1f}°F while away — heating bumped?"
+            )
+    elif thermostat_mode == "cool":
+        if setp is not None and setp < NEST_AWAY_MIN_COOL_SETPOINT_F:
+            return Status.WARN, (
+                f"cool setpoint {setp:.1f}°F while away — cooling bumped?"
+            )
+    # mode == off, heatcool, or unknown → no cost warning (Daniel doesn't
+    # use HEATCOOL; if that changes, add a both-bounds check here).
     return Status.OK, None
 
 
