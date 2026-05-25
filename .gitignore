@@ -13,6 +13,13 @@ __pycache__/
 # Safe to delete locally; will be regenerated on next run.
 notify-state.json
 
+# SmartThings OAuth state — holds the rolling access_token + refresh_token
+# (which rotates on every refresh). Persisted via GitHub Actions cache.
+# DO NOT commit; if leaked, attacker gets r:devices:* until the refresh
+# token's 30-day TTL or until re-auth.
+smartthings-oauth-state.json
+smartthings-oauth-state.json.tmp
+
 # Wrangler (Cloudflare Workers CLI) build + auth cache. Not secret — the
 # account.json holds an account ID — but no reason to ship it in the repo.
 cloudflare-worker/.wrangler/

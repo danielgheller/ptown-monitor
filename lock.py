@@ -3,12 +3,13 @@
 Yale lock status check for the Ptown house.
 
 The Yale lock is paired to SmartThings (Yale Access app → Works With →
-SmartThings). We reuse the same SMARTTHINGS_TOKEN that the garage door
-and Caseta lights use. The lock exposes the SmartThings `lock` capability;
-attribute `lock` has values locked / unlocked / unknown / not fully locked.
+SmartThings). We share the same OAuth-In SmartApp credentials with the
+garage door and Caseta lights — see smartthings_oauth.py. The lock
+exposes the SmartThings `lock` capability; attribute `lock` has values
+locked / unlocked / unknown / not fully locked.
 
 Credentials in `.env`:
-    SMARTTHINGS_TOKEN=<read-only PAT>
+    SMARTTHINGS_CLIENT_ID / SMARTTHINGS_CLIENT_SECRET / SMARTTHINGS_REFRESH_TOKEN
     SMARTTHINGS_LOCK_DEVICE_ID=<UUID>  # optional; auto-discovered if absent
 
 Why this isn't yalexs: Yale forced all individual logins onto OAuth in late
@@ -32,6 +33,8 @@ import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
+
+import smartthings_oauth
 
 API_BASE = "https://api.smartthings.com/v1"
 UA = "ptown-monitor/0.1 (+local)"
@@ -178,14 +181,16 @@ def main() -> int:
     here = Path(__file__).resolve().parent
     load_env(here / ".env")
 
-    token = (os.environ.get("SMARTTHINGS_TOKEN") or "").strip()
-    if not token:
-        msg = "Missing SMARTTHINGS_TOKEN"
+    try:
+        token = smartthings_oauth.get_access_token()
+    except Exception as e:
+        msg = f"SmartThings auth failed: {e}"
         if args.emit_json:
             _emit_json_error(msg)
             return 2
-        print(f"{msg}. Fill it into:", file=sys.stderr)
-        print(f"  {here / '.env'}", file=sys.stderr)
+        print(msg, file=sys.stderr)
+        print(f"  Check SMARTTHINGS_CLIENT_ID / SMARTTHINGS_CLIENT_SECRET / "
+              f"SMARTTHINGS_REFRESH_TOKEN in {here / '.env'}", file=sys.stderr)
         return 2
 
     device_id = (os.environ.get("SMARTTHINGS_LOCK_DEVICE_ID") or "").strip()

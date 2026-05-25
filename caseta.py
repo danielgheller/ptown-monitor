@@ -3,10 +3,10 @@
 Lutron Caseta lighting status check for the Ptown house.
 
 The Caseta Smart Bridge is paired to SmartThings via the "Works With
-SmartThings" integration; we reuse the same SMARTTHINGS_TOKEN that the
-garage door uses. Each Caseta dimmer/switch appears as a SmartThings device
-with the `switch` capability (on/off) and, for dimmers, `switchLevel`
-(0-100 brightness).
+SmartThings" integration; we share the same OAuth-In SmartApp credentials
+with the garage door and lock — see smartthings_oauth.py. Each Caseta
+dimmer/switch appears as a SmartThings device with the `switch`
+capability (on/off) and, for dimmers, `switchLevel` (0-100 brightness).
 
 Monitoring stance (Daniel, 2026-05-21): cost-protection. Every Caseta
 device should be OFF when he's away from Ptown. Any light on while AWAY
@@ -32,6 +32,8 @@ import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+
+import smartthings_oauth
 
 API_BASE = "https://api.smartthings.com/v1"
 UA = "ptown-monitor/0.1 (+local)"
@@ -175,14 +177,16 @@ def main() -> int:
     here = Path(__file__).resolve().parent
     load_env(here / ".env")
 
-    token = (os.environ.get("SMARTTHINGS_TOKEN") or "").strip()
-    if not token:
-        msg = "Missing SMARTTHINGS_TOKEN"
+    try:
+        token = smartthings_oauth.get_access_token()
+    except Exception as e:
+        msg = f"SmartThings auth failed: {e}"
         if args.emit_json:
             _emit_json_error(msg)
             return 2
-        print(f"{msg}. Fill it into:", file=sys.stderr)
-        print(f"  {here / '.env'}", file=sys.stderr)
+        print(msg, file=sys.stderr)
+        print(f"  Check SMARTTHINGS_CLIENT_ID / SMARTTHINGS_CLIENT_SECRET / "
+              f"SMARTTHINGS_REFRESH_TOKEN in {here / '.env'}", file=sys.stderr)
         return 2
 
     try:

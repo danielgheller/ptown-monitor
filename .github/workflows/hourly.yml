@@ -71,6 +71,22 @@ jobs:
           restore-keys: |
             ptown-notify-state-
 
+      # Restore the SmartThings OAuth state file. Holds the rolling
+      # access_token (24h TTL) + rotated refresh_token (30d TTL). Each
+      # successful refresh produces a NEW refresh_token and invalidates
+      # the old one, so the cache is load-bearing — without it we'd burn
+      # through the bootstrap refresh_token after one run and the next
+      # run would 400. First run (or post-cache-eviction) falls back to
+      # the SMARTTHINGS_REFRESH_TOKEN secret.
+      - name: Restore SmartThings OAuth state
+        uses: actions/cache/restore@v4
+        id: st-oauth-restore
+        with:
+          path: smartthings-oauth-state.json
+          key: ptown-st-oauth-${{ github.run_id }}
+          restore-keys: |
+            ptown-st-oauth-
+
       - name: Run checks, notify, and build site
         env:
           NUHEAT_EMAIL:       ${{ secrets.NUHEAT_EMAIL }}
@@ -81,10 +97,17 @@ jobs:
           NEST_CLIENT_ID:     ${{ secrets.NEST_CLIENT_ID }}
           NEST_CLIENT_SECRET: ${{ secrets.NEST_CLIENT_SECRET }}
           NEST_REFRESH_TOKEN: ${{ secrets.NEST_REFRESH_TOKEN }}
-          # SmartThings PAT — shared by garage (OHD Anywhere), Yale lock,
-          # and Caseta lighting. All three use the same read-only PAT.
-          # The _DEVICE_ID secrets are optional; absent → auto-discover each run.
-          SMARTTHINGS_TOKEN:           ${{ secrets.SMARTTHINGS_TOKEN }}
+          # SmartThings OAuth-In SmartApp — shared by garage (OHD Anywhere),
+          # Yale lock, and Caseta lighting. Replaced the old SMARTTHINGS_TOKEN
+          # PAT after Samsung capped PAT lifetime at 24h (2024-12-30 policy).
+          # The REFRESH_TOKEN secret is only used as bootstrap when the
+          # cached state file is absent; on every successful refresh the new
+          # (rotated) refresh_token is written back to the state file and
+          # persisted via the cache step below.
+          SMARTTHINGS_CLIENT_ID:       ${{ secrets.SMARTTHINGS_CLIENT_ID }}
+          SMARTTHINGS_CLIENT_SECRET:   ${{ secrets.SMARTTHINGS_CLIENT_SECRET }}
+          SMARTTHINGS_REFRESH_TOKEN:   ${{ secrets.SMARTTHINGS_REFRESH_TOKEN }}
+          # _DEVICE_ID secrets are optional; absent → auto-discover each run.
           SMARTTHINGS_DEVICE_ID:       ${{ secrets.SMARTTHINGS_DEVICE_ID }}
           SMARTTHINGS_LOCK_DEVICE_ID:  ${{ secrets.SMARTTHINGS_LOCK_DEVICE_ID }}
           RESEND_API_KEY:     ${{ secrets.RESEND_API_KEY }}
@@ -174,3 +197,14 @@ jobs:
         with:
           path: notify-state.json
           key: ptown-notify-state-${{ github.run_id }}
+
+      # Same pattern for the SmartThings OAuth state. `if: always()` is
+      # critical here — if we skipped saving on failure, the rotated
+      # refresh_token written during this run would be lost and the next
+      # run would 400 trying to reuse the now-invalidated bootstrap value.
+      - name: Save SmartThings OAuth state
+        if: always() && hashFiles('smartthings-oauth-state.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: smartthings-oauth-state.json
+          key: ptown-st-oauth-${{ github.run_id }}

@@ -11,8 +11,10 @@ route through Samsung SmartThings instead:
 SmartThings reads the standard `doorControl` capability and exposes the
 door's state as one of: open, closed, opening, closing, unknown.
 
-Credentials in `.env`:
-    SMARTTHINGS_TOKEN=<Personal Access Token, read-only scopes>
+Credentials in `.env` (OAuth-In SmartApp — see smartthings_oauth.py):
+    SMARTTHINGS_CLIENT_ID=<OAuth client id>
+    SMARTTHINGS_CLIENT_SECRET=<OAuth client secret>
+    SMARTTHINGS_REFRESH_TOKEN=<rotating refresh token; bootstrap only>
     SMARTTHINGS_DEVICE_ID=<UUID of the garage door device>   # optional; auto-discovered if absent
 
 Usage:
@@ -32,6 +34,8 @@ import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
+
+import smartthings_oauth
 
 API_BASE = "https://api.smartthings.com/v1"
 UA = "ptown-monitor/0.1 (+local)"
@@ -216,14 +220,16 @@ def main() -> int:
     here = Path(__file__).resolve().parent
     load_env(here / ".env")
 
-    token = (os.environ.get("SMARTTHINGS_TOKEN") or "").strip()
-    if not token:
-        msg = "Missing SMARTTHINGS_TOKEN"
+    try:
+        token = smartthings_oauth.get_access_token()
+    except Exception as e:
+        msg = f"SmartThings auth failed: {e}"
         if args.emit_json:
             _emit_json_error(msg)
             return 2
-        print(f"{msg}. Fill it into:", file=sys.stderr)
-        print(f"  {here / '.env'}", file=sys.stderr)
+        print(msg, file=sys.stderr)
+        print(f"  Check SMARTTHINGS_CLIENT_ID / SMARTTHINGS_CLIENT_SECRET / "
+              f"SMARTTHINGS_REFRESH_TOKEN in {here / '.env'}", file=sys.stderr)
         return 2
 
     device_id = (os.environ.get("SMARTTHINGS_DEVICE_ID") or "").strip()

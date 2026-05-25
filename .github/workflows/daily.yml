@@ -43,6 +43,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      # See hourly.yml for full rationale — the SmartThings refresh_token
+      # rotates on every use, so we must restore the cached state file
+      # rather than burning through the bootstrap secret every run.
+      - name: Restore SmartThings OAuth state
+        uses: actions/cache/restore@v4
+        with:
+          path: smartthings-oauth-state.json
+          key: ptown-st-oauth-${{ github.run_id }}
+          restore-keys: |
+            ptown-st-oauth-
+
       - name: Send daily summary
         env:
           NUHEAT_EMAIL:       ${{ secrets.NUHEAT_EMAIL }}
@@ -53,8 +64,10 @@ jobs:
           NEST_CLIENT_ID:     ${{ secrets.NEST_CLIENT_ID }}
           NEST_CLIENT_SECRET: ${{ secrets.NEST_CLIENT_SECRET }}
           NEST_REFRESH_TOKEN: ${{ secrets.NEST_REFRESH_TOKEN }}
-          # SmartThings PAT — shared by garage, Yale lock, and Caseta lighting.
-          SMARTTHINGS_TOKEN:           ${{ secrets.SMARTTHINGS_TOKEN }}
+          # SmartThings OAuth-In SmartApp — see smartthings_oauth.py.
+          SMARTTHINGS_CLIENT_ID:       ${{ secrets.SMARTTHINGS_CLIENT_ID }}
+          SMARTTHINGS_CLIENT_SECRET:   ${{ secrets.SMARTTHINGS_CLIENT_SECRET }}
+          SMARTTHINGS_REFRESH_TOKEN:   ${{ secrets.SMARTTHINGS_REFRESH_TOKEN }}
           SMARTTHINGS_DEVICE_ID:       ${{ secrets.SMARTTHINGS_DEVICE_ID }}
           SMARTTHINGS_LOCK_DEVICE_ID:  ${{ secrets.SMARTTHINGS_LOCK_DEVICE_ID }}
           RESEND_API_KEY:     ${{ secrets.RESEND_API_KEY }}
@@ -65,3 +78,12 @@ jobs:
           WORKER_URL:         ${{ secrets.WORKER_URL }}
           TOGGLE_SECRET:      ${{ secrets.TOGGLE_SECRET }}
         run: python notify.py --daily
+
+      # Persist the rotated refresh_token back to the cache so the next
+      # daily/hourly run can use it. Same `if: always()` reasoning as hourly.
+      - name: Save SmartThings OAuth state
+        if: always() && hashFiles('smartthings-oauth-state.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: smartthings-oauth-state.json
+          key: ptown-st-oauth-${{ github.run_id }}
