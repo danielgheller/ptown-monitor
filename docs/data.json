@@ -1,6 +1,6 @@
 {
   "current": {
-    "timestamp": "2026-06-13T08:30:19+0000",
+    "timestamp": "2026-06-13T11:23:43+0000",
     "overall_status": "crit",
     "in_ptown": true,
     "systems": [
@@ -12,7 +12,7 @@
         "devices": [
           {
             "name": "guest floor",
-            "current_f": 71.6,
+            "current_f": 71.3,
             "setpoint_f": 41.0,
             "mode": "idle",
             "online": true,
@@ -32,7 +32,7 @@
           },
           {
             "name": "primary floor",
-            "current_f": 68.7,
+            "current_f": 68.2,
             "setpoint_f": 41.0,
             "mode": "idle",
             "online": true,
@@ -50,7 +50,7 @@
         "devices": [
           {
             "name": "Jacuzzi J-335",
-            "current_f": 102.9,
+            "current_f": 102.0,
             "setpoint_f": 100.9,
             "mode": "heater off, away_from_home",
             "online": true,
@@ -74,7 +74,7 @@
         "devices": [
           {
             "name": "Cabana",
-            "current_f": 68.4,
+            "current_f": 67.5,
             "setpoint_f": 73.7,
             "mode": "Cool, HVAC off",
             "online": true,
@@ -91,12 +91,12 @@
           },
           {
             "name": "Primary Bedroom",
-            "current_f": 66.4,
+            "current_f": 66.5,
             "setpoint_f": 66.8,
             "mode": "Cool, HVAC off",
             "online": true,
             "extra": {
-              "humidity": 55,
+              "humidity": 53,
               "hvac_status": "off",
               "thermostat_mode": "cool",
               "eco_mode": "off",
@@ -128,240 +128,27 @@
       {
         "system": "garage",
         "overall_status": "crit",
-        "overall_reason": "SmartThings auth failed: HTTP Error 403: Forbidden",
-        "error": "SmartThings auth failed: HTTP Error 403: Forbidden",
+        "overall_reason": "SmartThings auth failed: HTTP Error 400: Bad Request",
+        "error": "SmartThings auth failed: HTTP Error 400: Bad Request",
         "devices": []
       },
       {
         "system": "lock",
         "overall_status": "crit",
-        "overall_reason": "SmartThings auth failed: HTTP Error 403: Forbidden",
-        "error": "SmartThings auth failed: HTTP Error 403: Forbidden",
+        "overall_reason": "SmartThings auth failed: HTTP Error 400: Bad Request",
+        "error": "SmartThings auth failed: HTTP Error 400: Bad Request",
         "devices": []
       },
       {
         "system": "caseta",
         "overall_status": "crit",
-        "overall_reason": "SmartThings auth failed: HTTP Error 403: Forbidden",
-        "error": "SmartThings auth failed: HTTP Error 403: Forbidden",
+        "overall_reason": "SmartThings auth failed: HTTP Error 400: Bad Request",
+        "error": "SmartThings auth failed: HTTP Error 400: Bad Request",
         "devices": []
       }
     ]
   },
   "history_hourly": [
-    {
-      "timestamp": "2026-06-10T01:29:28+0000",
-      "readings": {
-        "nuheat:guest floor": {
-          "set": 41.0,
-          "now": 75.2
-        },
-        "nuheat:cabana floor": {
-          "set": 41.0,
-          "now": 66.8
-        },
-        "nuheat:primary floor": {
-          "set": 41.0,
-          "now": 75.7
-        },
-        "hottub:Jacuzzi J-335": {
-          "set": 64.9,
-          "now": 95.0
-        },
-        "nest:Cabana": {
-          "set": 76.0,
-          "now": 69.5
-        },
-        "nest:Primary Bedroom": {
-          "set": 76.0,
-          "now": 76.4
-        },
-        "nest:Kitchen": {
-          "set": 76.0,
-          "now": 72.6
-        },
-        "garage:My Door": {
-          "set": null,
-          "now": null
-        },
-        "lock:Front Door": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Cabana Bathroom Main Lights": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Cabana Bathroom Sconces": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Cabana Bedroom Cove Lights": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Cabana Bedroom Main Lights": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Cabana Bedroom Table Lamp": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Cabana Bedroom Table Lamps": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Cabana Porch Sconces": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Front Porch Sconces": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Garage Main Lights": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Guest Bathroom Main Lights": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Guest Bathroom Sconces": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Guest Bedroom Closet Light": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Guest Bedroom Desk Lamp": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Guest Bedroom Main Lights": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Guest Bedroom Table Lamps": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Guest Porch Sconces": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Kitchen Dining Room Main": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Kitchen Entry Art Light": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Kitchen Kitchen Main": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Kitchen Table Pendants": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Kitchen Under Cabinet": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Laundry Room Cubby": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Laundry Room Main Lights": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Living Room Art Lights": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Living Room Main Lights": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Living Room Pendants": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Living Room Porch Sconces": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Master Bathroom Main Lights": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Master Bathroom Sconces": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Master Bedroom Closet Light": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Master Bedroom Main Lights": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Master Bedroom Sconces": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Master Porch Sconces": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Roof Deck Back Porch Lights": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Stairs CabanaEntry Landings": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Stairs Entry Green Lights": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Stairs Garage Staircase": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Stairs Guest Landing": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Stairs Living Room Landing": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Stairs Master Landing": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Stairs Wet Bar Sconces": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Storage Under Roof Wall Lights": {
-          "set": null,
-          "now": null
-        },
-        "caseta:Wet Bar Undercounter Lights": {
-          "set": null,
-          "now": null
-        }
-      }
-    },
     {
       "timestamp": "2026-06-10T06:40:31+0000",
       "readings": {
@@ -2392,6 +2179,39 @@
           "now": 69.5
         }
       }
+    },
+    {
+      "timestamp": "2026-06-13T11:23:43+0000",
+      "readings": {
+        "nuheat:guest floor": {
+          "set": 41.0,
+          "now": 71.3
+        },
+        "nuheat:cabana floor": {
+          "set": 41.0,
+          "now": 64.5
+        },
+        "nuheat:primary floor": {
+          "set": 41.0,
+          "now": 68.2
+        },
+        "hottub:Jacuzzi J-335": {
+          "set": 100.9,
+          "now": 102.0
+        },
+        "nest:Cabana": {
+          "set": 73.7,
+          "now": 67.5
+        },
+        "nest:Primary Bedroom": {
+          "set": 66.8,
+          "now": 66.5
+        },
+        "nest:Kitchen": {
+          "set": 69.3,
+          "now": 69.5
+        }
+      }
     }
   ],
   "history_daily": [
@@ -3321,11 +3141,11 @@
     },
     {
       "date": "2026-06-13",
-      "timestamp": "2026-06-13T08:30:19+0000",
+      "timestamp": "2026-06-13T11:23:43+0000",
       "readings": {
         "nuheat:guest floor": {
           "set": 41.0,
-          "now": 71.6
+          "now": 71.3
         },
         "nuheat:cabana floor": {
           "set": 41.0,
@@ -3333,19 +3153,19 @@
         },
         "nuheat:primary floor": {
           "set": 41.0,
-          "now": 68.7
+          "now": 68.2
         },
         "hottub:Jacuzzi J-335": {
           "set": 100.9,
-          "now": 102.9
+          "now": 102.0
         },
         "nest:Cabana": {
           "set": 73.7,
-          "now": 68.4
+          "now": 67.5
         },
         "nest:Primary Bedroom": {
           "set": 66.8,
-          "now": 66.4
+          "now": 66.5
         },
         "nest:Kitchen": {
           "set": 69.3,
@@ -3354,5 +3174,5 @@
       }
     }
   ],
-  "generated_at": "2026-06-13T08:30:19+0000"
+  "generated_at": "2026-06-13T11:23:43+0000"
 }
