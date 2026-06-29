@@ -1,6 +1,6 @@
 {
   "current": {
-    "timestamp": "2026-06-29T21:44:06+0000",
+    "timestamp": "2026-06-29T23:14:32+0000",
     "overall_status": "crit",
     "in_ptown": true,
     "systems": [
@@ -22,7 +22,7 @@
           },
           {
             "name": "cabana floor",
-            "current_f": 67.7,
+            "current_f": 67.8,
             "setpoint_f": 41.0,
             "mode": "idle",
             "online": true,
@@ -32,7 +32,7 @@
           },
           {
             "name": "primary floor",
-            "current_f": 71.3,
+            "current_f": 72.0,
             "setpoint_f": 41.0,
             "mode": "idle",
             "online": true,
@@ -50,7 +50,7 @@
         "devices": [
           {
             "name": "Jacuzzi J-335",
-            "current_f": 100.9,
+            "current_f": 102.0,
             "setpoint_f": 102.0,
             "mode": "heater off, away_from_home",
             "online": true,
@@ -74,12 +74,12 @@
         "devices": [
           {
             "name": "Cabana",
-            "current_f": 71.6,
+            "current_f": 71.4,
             "setpoint_f": 74.7,
             "mode": "Cool, HVAC off",
             "online": true,
             "extra": {
-              "humidity": 59,
+              "humidity": 60,
               "hvac_status": "off",
               "thermostat_mode": "cool",
               "eco_mode": "off",
@@ -93,11 +93,11 @@
             "name": "Primary Bedroom",
             "current_f": 71.6,
             "setpoint_f": 71.3,
-            "mode": "Cool, HVAC cooling",
+            "mode": "Cool, HVAC off",
             "online": true,
             "extra": {
-              "humidity": 49,
-              "hvac_status": "cooling",
+              "humidity": 52,
+              "hvac_status": "off",
               "thermostat_mode": "cool",
               "eco_mode": "off",
               "heat_f": null,
@@ -108,17 +108,17 @@
           },
           {
             "name": "Kitchen",
-            "current_f": 71.5,
-            "setpoint_f": 71.6,
-            "mode": "Cool, HVAC cooling",
+            "current_f": 71.8,
+            "setpoint_f": 73.7,
+            "mode": "Cool, HVAC off",
             "online": true,
             "extra": {
-              "humidity": 54,
-              "hvac_status": "cooling",
+              "humidity": 60,
+              "hvac_status": "off",
               "thermostat_mode": "cool",
               "eco_mode": "off",
               "heat_f": null,
-              "cool_f": 71.6
+              "cool_f": 73.7
             },
             "status": "ok",
             "reason": null
@@ -149,39 +149,6 @@
     ]
   },
   "history_hourly": [
-    {
-      "timestamp": "2026-06-27T07:27:15+0000",
-      "readings": {
-        "nuheat:guest floor": {
-          "set": 41.0,
-          "now": 70.2
-        },
-        "nuheat:cabana floor": {
-          "set": 41.0,
-          "now": 65.3
-        },
-        "nuheat:primary floor": {
-          "set": 41.0,
-          "now": 67.5
-        },
-        "hottub:Jacuzzi J-335": {
-          "set": 102.0,
-          "now": 102.9
-        },
-        "nest:Cabana": {
-          "set": 74.7,
-          "now": 68.5
-        },
-        "nest:Primary Bedroom": {
-          "set": 67.1,
-          "now": 66.5
-        },
-        "nest:Kitchen": {
-          "set": 71.6,
-          "now": 69.3
-        }
-      }
-    },
     {
       "timestamp": "2026-06-27T10:21:04+0000",
       "readings": {
@@ -940,6 +907,39 @@
           "now": 71.5
         }
       }
+    },
+    {
+      "timestamp": "2026-06-29T23:14:32+0000",
+      "readings": {
+        "nuheat:guest floor": {
+          "set": 41.0,
+          "now": 71.7
+        },
+        "nuheat:cabana floor": {
+          "set": 41.0,
+          "now": 67.8
+        },
+        "nuheat:primary floor": {
+          "set": 41.0,
+          "now": 72.0
+        },
+        "hottub:Jacuzzi J-335": {
+          "set": 102.0,
+          "now": 102.0
+        },
+        "nest:Cabana": {
+          "set": 74.7,
+          "now": 71.4
+        },
+        "nest:Primary Bedroom": {
+          "set": 71.3,
+          "now": 71.6
+        },
+        "nest:Kitchen": {
+          "set": 73.7,
+          "now": 71.8
+        }
+      }
     }
   ],
   "history_daily": [
@@ -1149,7 +1149,7 @@
     },
     {
       "date": "2026-06-29",
-      "timestamp": "2026-06-29T21:44:06+0000",
+      "timestamp": "2026-06-29T23:14:32+0000",
       "readings": {
         "nuheat:guest floor": {
           "set": 41.0,
@@ -1157,30 +1157,30 @@
         },
         "nuheat:cabana floor": {
           "set": 41.0,
-          "now": 67.7
+          "now": 67.8
         },
         "nuheat:primary floor": {
           "set": 41.0,
-          "now": 71.3
+          "now": 72.0
         },
         "hottub:Jacuzzi J-335": {
           "set": 102.0,
-          "now": 100.9
+          "now": 102.0
         },
         "nest:Cabana": {
           "set": 74.7,
-          "now": 71.6
+          "now": 71.4
         },
         "nest:Primary Bedroom": {
           "set": 71.3,
           "now": 71.6
         },
         "nest:Kitchen": {
-          "set": 71.6,
-          "now": 71.5
+          "set": 73.7,
+          "now": 71.8
         }
       }
     }
   ],
-  "generated_at": "2026-06-29T21:44:06+0000"
+  "generated_at": "2026-06-29T23:14:33+0000"
 }
