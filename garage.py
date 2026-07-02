@@ -22,6 +22,7 @@ Usage:
     python3 garage.py --raw        # dump raw /devices/{id}/status JSON
     python3 garage.py --json       # emit normalized JSON for dashboard.py
     python3 garage.py --discover   # list all SmartThings devices (for setup)
+    python3 garage.py --close      # send CLOSE (needs x:devices:* scope)
 
 No third-party dependencies — uses only the Python stdlib.
 """
@@ -73,6 +74,22 @@ def _get(url: str, token: str) -> dict:
         return json.loads(resp.read().decode())
 
 
+def _post(url: str, token: str, payload: dict) -> dict:
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode(),
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "User-Agent": UA,
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return json.loads(resp.read().decode())
+
+
 # ---------- SmartThings API ----------
 def list_devices(token: str) -> list[dict]:
     """Return the full device list for this account."""
@@ -97,6 +114,34 @@ def find_door_devices(devices: list[dict]) -> list[dict]:
 def get_device_status(token: str, device_id: str) -> dict:
     """Fetch the device's full status dict."""
     return _get(f"{API_BASE}/devices/{device_id}/status", token)
+
+
+def send_door_command(token: str, device_id: str, command: str,
+                      capability: str | None = None) -> dict:
+    """Send a doorControl command ('close' or 'open') to the device.
+
+    Requires the OAuth token to carry the `x:devices:*` scope — the original
+    OAuth-In authorization was read-only (`r:devices:*`); re-auth via
+    smartthings_bootstrap.py grants both. A 403 here means the scope is
+    missing, not that the request is malformed.
+
+    If `capability` is None, tries each known door capability in order —
+    SmartThings returns 422 for a capability the device doesn't implement.
+    """
+    caps = (capability,) if capability else DOOR_CAPABILITIES
+    last_err: Exception | None = None
+    for cap in caps:
+        payload = {"commands": [
+            {"component": "main", "capability": cap, "command": command}
+        ]}
+        try:
+            return _post(f"{API_BASE}/devices/{device_id}/commands", token, payload)
+        except urllib.error.HTTPError as e:
+            last_err = e
+            if e.code in (400, 422) and not capability:
+                continue  # wrong capability guess — try the next one
+            raise
+    raise last_err  # type: ignore[misc]
 
 
 def get_device_health(token: str, device_id: str) -> dict:
@@ -215,6 +260,10 @@ def main() -> int:
                         help="emit normalized JSON (consumed by dashboard.py)")
     parser.add_argument("--discover", action="store_true",
                         help="list all SmartThings devices (for first-time setup)")
+    parser.add_argument("--close", action="store_true",
+                        help="send the CLOSE command to the door (requires "
+                             "x:devices:* scope; safe direction only — there "
+                             "is deliberately no --open)")
     args = parser.parse_args()
 
     here = Path(__file__).resolve().parent
@@ -292,6 +341,18 @@ def main() -> int:
                 return 1
             print(f"Device lookup failed: {e}", file=sys.stderr)
             return 1
+
+    # --- close branch (before status; the point is the command, and the
+    # post-command state is 'closing' anyway — next hourly run confirms) ---
+    if args.close:
+        cap = device_has_door_capability(device) if device else None
+        try:
+            send_door_command(token, device_id, "close", cap)
+        except Exception as e:
+            print(f"Close command failed: {e}", file=sys.stderr)
+            return 1
+        print("Close command accepted — door should be closing now.")
+        return 0
 
     # --- fetch status + health in sequence ---
     try:

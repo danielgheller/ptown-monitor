@@ -24,11 +24,14 @@ on:
     paths:
       - 'IN_PTOWN'
 
-# Only one run at a time — if an hourly run is somehow still going when the
-# next one fires, cancel the new one rather than doubling up on the state
-# file. (Very unlikely in practice; the checks take under 30 seconds.)
+# Only one Ptown run at a time, ACROSS the hourly AND daily workflows. The
+# SmartThings refresh_token rotates on every use and the prior token is
+# invalidated immediately, so if the hourly (:15) and daily (09:17) runs
+# ever refresh concurrently they double-spend the same token and one gets a
+# 400. A shared concurrency group serializes them; cancel-in-progress:false
+# queues the second run instead of dropping it.
 concurrency:
-  group: ptown-hourly
+  group: ptown-monitor-oauth
   cancel-in-progress: false
 
 # Opt all JS-based actions into Node 24. GitHub is deprecating Node 20 on

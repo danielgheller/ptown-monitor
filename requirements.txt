@@ -1,2 +1,7 @@
 python-smarttub>=0.0.35
 aiohttp>=3.9
+# Somfy TaHoma awning control (control.py / tahoma.py). pyoverkiz v2
+# requires Python 3.12+; the environment marker lets older local venvs
+# (and the 3.11 hourly/daily workflows, which never touch awnings) skip
+# it instead of failing the whole install.
+pyoverkiz>=2; python_version >= "3.12"

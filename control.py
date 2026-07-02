@@ -15,6 +15,12 @@ Actions
   nest_off_eco      All Nest thermostats: set ThermostatEco.SetMode OFF.
                     They revert to whatever HEAT setpoint was last saved.
   master_bath_72    Nuheat thermostat with "master" in its name → 72°F.
+  garage_close      Send CLOSE to the Overhead Door garage (SmartThings).
+                    Close-only by design — no remote open.
+  awnings_close     Retract all Somfy awnings (TaHoma/Overkiz). RTS motors
+                    are one-way, so success = "command accepted", not
+                    "confirmed closed".
+  awnings_open      Extend all Somfy awnings.
 
 Why "exit eco only" instead of also setting a heat target: the user picked
 that option explicitly in the design conversation. Nest's SDM API treats
@@ -279,6 +285,55 @@ def action_tub_set(temp_f: float, heat_mode_name: str) -> list[dict]:
     return asyncio.run(_async_set_tub(temp_f, heat_mode_name))
 
 
+# ---------- Garage action (SmartThings) ----------
+def action_garage_close() -> list[dict]:
+    """Send CLOSE to the garage door. Close-only by design.
+
+    Reuses garage.py's discovery + command path. Requires the OAuth token
+    to carry x:devices:* (granted by the smartthings_bootstrap.py re-auth);
+    a 403 here means the scope is missing.
+    """
+    import garage  # local import: keeps module load light for other actions
+    import smartthings_oauth
+
+    try:
+        token = smartthings_oauth.get_access_token()
+    except Exception as e:
+        return [_result("garage:auth", False, str(e))]
+
+    device_id = (os.environ.get("SMARTTHINGS_DEVICE_ID") or "").strip()
+    capability = None
+    if not device_id:
+        try:
+            door_devices = garage.find_door_devices(garage.list_devices(token))
+        except Exception as e:
+            return [_result("garage:discover", False, str(e))]
+        if not door_devices:
+            return [_result("garage:discover", False, "no door-capable devices visible")]
+        if len(door_devices) > 1:
+            names = ", ".join(d.get("label") or d.get("deviceId", "?")
+                              for d in door_devices)
+            return [_result("garage:discover", False,
+                            f"multiple door devices ({names}) — pin SMARTTHINGS_DEVICE_ID")]
+        device_id = door_devices[0]["deviceId"]
+        capability = garage.device_has_door_capability(door_devices[0])
+
+    try:
+        garage.send_door_command(token, device_id, "close", capability)
+        return [_result("garage:door", True, "close command accepted")]
+    except Exception as e:
+        return [_result("garage:door", False, str(e))]
+
+
+# ---------- Awning actions (Somfy TaHoma / Overkiz) ----------
+def action_awnings(verb: str) -> list[dict]:
+    """Send open/close to every awning. RTS = fire-and-forget: 'ok' means
+    the Overkiz cloud accepted the command, not that the awning moved."""
+    import tahoma  # local import: pyoverkiz needs Python 3.12+; only load
+                   # it when an awning action is actually requested
+    return tahoma.run_verb(verb)
+
+
 # ---------- IN_PTOWN flag (committed by the workflow, not by us) ----------
 # We don't write to git here. The Cloudflare Worker (the one that triggers
 # this workflow) commits IN_PTOWN before dispatching. That keeps the git
@@ -294,6 +349,9 @@ ACTIONS = {
     "tub_104":        "Heat the tub to 104°F (READY mode)",
     "nest_off_eco":   "Take all Nest thermostats out of eco mode",
     "master_bath_72": "Set the master bath floor to 72°F",
+    "garage_close":   "Close the garage door (close-only by design)",
+    "awnings_close":  "Retract all Somfy awnings",
+    "awnings_open":   "Extend all Somfy awnings",
 }
 
 
@@ -313,6 +371,12 @@ def run_action(action: str) -> tuple[list[dict], bool]:
         results += action_nest_eco_off()
     elif action == "master_bath_72":
         results += action_nuheat_set(NUHEAT_MASTER_BATH_F, only_master_bath=True)
+    elif action == "garage_close":
+        results += action_garage_close()
+    elif action == "awnings_close":
+        results += action_awnings("close")
+    elif action == "awnings_open":
+        results += action_awnings("open")
     else:
         return [_result("action", False, f"unknown action: {action}")], False
 

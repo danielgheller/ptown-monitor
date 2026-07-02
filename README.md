@@ -9,7 +9,10 @@ vendor's cloud API and prints the current state of the devices in that system.
 - `garage.py` — Overhead Door garage via OHD Anywhere → SmartThings ✅
 - `lock.py` — Yale front door lock via Yale Access → SmartThings ✅
 - `caseta.py` — Lutron Caseta lighting via Caseta Bridge → SmartThings ✅
-- `all.py` — runs all six in parallel and prints a combined status ✅
+- `tahoma.py` — Somfy awnings via TaHoma/Overkiz cloud (control-only; RTS
+  motors have no status readback) ✅
+- `all.py` — runs all six monitored systems in parallel and prints a
+  combined status ✅
 
 ## One-time setup
 
@@ -84,12 +87,13 @@ One-time setup:
    sign in to a free Samsung account and authorize the link.
 2. Open the **SmartThings app**, confirm the garage door device appears
    and reads open/closed correctly. Note the device's display name.
-3. At https://account.smartthings.com/tokens, generate a Personal Access
-   Token named `ptown-monitor`. Check **Devices: List all devices** and
-   **Devices: See all devices**. Skip the write/control scopes — we don't
-   need them for read-only monitoring.
-4. Paste the token into `.env` as `SMARTTHINGS_TOKEN=...`.
-5. Run `./ptown garage` once. It will auto-discover the device, print
+3. Auth is the OAuth-In SmartApp shared by garage/lock/caseta (see
+   `smartthings_oauth.py`; Samsung capped PATs to 24h in Dec 2024). If
+   the tokens are ever fully dead, run `python3 smartthings_bootstrap.py`
+   and follow the prompts — it grants `r:devices:*` + `x:devices:*`, then
+   update the `SMARTTHINGS_REFRESH_TOKEN` GH secret and purge the
+   `ptown-st-oauth-*` Actions caches.
+4. Run `./ptown garage` once. It will auto-discover the device, print
    the ID, and tell you to add `SMARTTHINGS_DEVICE_ID=<uuid>` to `.env`
    to pin it.
 
@@ -97,7 +101,9 @@ Garage status feeds the dashboard: **door open while away** is a CRIT
 (security, not cost). Door state while in Ptown is informational only.
 
 `./ptown garage --discover` lists every device the token can see, useful
-if more than one door-capable device shows up.
+if more than one door-capable device shows up. `./ptown garage --close`
+sends the CLOSE command (the email's "Close garage" button does the same
+via control.py) — close-only by design, there is no remote open.
 
 ## Front door lock (Yale via SmartThings)
 
@@ -133,8 +139,35 @@ renders a compact "N of M on" summary instead of one line per device.
 Dashboard rule: any Caseta device on **while away** = WARN, listed in
 the email body. When in Ptown, all-on is OK.
 
-No new credentials needed — caseta.py uses the same `SMARTTHINGS_TOKEN`
-as garage and lock.
+No new credentials needed — caseta.py shares the OAuth-In SmartApp
+credentials with garage and lock.
+
+## Awnings (Somfy via TaHoma)
+
+The awnings pair to a TaHoma hub and are **RTS motors — one-way radio with
+no position feedback**, so there is nothing to monitor hourly; `tahoma.py`
+is control-only and is deliberately NOT in `all.py` / the dashboard.
+
+API path: the Overkiz cloud API (the same one the TaHoma app uses), via
+the `pyoverkiz` library against the North America server. Somfy's old Open
+API was sunset in June 2022. Credentials are just the TaHoma app login
+(`TAHOMA_EMAIL` / `TAHOMA_PASSWORD` in `.env` + GH secrets). Etiquette:
+one login + one command per invocation — Somfy bans abusive pollers, and
+button-tap usage is far below any threshold.
+
+    ./ptown tahoma --discover     # list devices, confirm the awnings + commands
+    ./ptown tahoma close          # retract all awnings
+    ./ptown tahoma open           # extend all awnings
+    ./ptown tahoma close --match deck   # subset by label
+
+Requires Python 3.12+ (pyoverkiz v2). The control workflow runs 3.12; if
+your local venv is older, `pip install -r requirements.txt` silently skips
+pyoverkiz and only `./ptown tahoma` is affected.
+
+Email buttons: **Awnings in** / **Awnings out** dispatch `awnings_close` /
+`awnings_open` through control.yml, same one-tap plumbing as the tub and
+Nest buttons. "Success" means the Overkiz cloud accepted the command —
+fire-and-forget by hardware design.
 
 ## Notes
 

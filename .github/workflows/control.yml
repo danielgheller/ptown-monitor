@@ -27,14 +27,20 @@ on:
           - tub_104
           - nest_off_eco
           - master_bath_72
+          - garage_close
+          - awnings_close
+          - awnings_open
 
-# Don't queue these — if Daniel mashes the same button twice, the second
-# tap should pre-empt the first. Tapping different buttons in succession
-# (e.g. "tub 104" then "master bath 72") still serializes via cancel-in-
-# progress, which is what we want: the LAST tap wins.
+# Shares the OAuth concurrency group with hourly.yml/daily.yml because
+# garage_close refreshes the same rotating SmartThings token — a control tap
+# landing mid-hourly-run would double-spend it (the exact bug that killed
+# garage/lock/caseta in June 2026). cancel-in-progress:false means taps
+# QUEUE behind a running check (~30s) instead of cancelling it. Trade-off
+# vs. the old "last tap wins" behavior: mashing a button now queues
+# duplicates — harmless, all actions are idempotent setpoints/commands.
 concurrency:
-  group: ptown-control
-  cancel-in-progress: true
+  group: ptown-monitor-oauth
+  cancel-in-progress: false
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
@@ -53,13 +59,29 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          # 3.12 (not 3.11 like hourly/daily) because pyoverkiz — the Somfy
+          # awning library — requires 3.12+. The awning actions only run
+          # here, so the other workflows can stay put.
+          python-version: '3.12'
           cache: pip
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
+      # garage_close refreshes the rotating SmartThings token, so this
+      # workflow must participate in the same state-file cache as
+      # hourly.yml — otherwise it would spend the token from the bootstrap
+      # secret and strand the cached one (or vice versa). Same keys, same
+      # save-always semantics. Harmless no-op for non-SmartThings actions.
+      - name: Restore SmartThings OAuth state
+        uses: actions/cache/restore@v4
+        with:
+          path: smartthings-oauth-state.json
+          key: ptown-st-oauth-${{ github.run_id }}
+          restore-keys: |
+            ptown-st-oauth-
 
       - name: Apply ${{ inputs.action }}
         env:
@@ -71,8 +93,27 @@ jobs:
           NEST_CLIENT_ID:     ${{ secrets.NEST_CLIENT_ID }}
           NEST_CLIENT_SECRET: ${{ secrets.NEST_CLIENT_SECRET }}
           NEST_REFRESH_TOKEN: ${{ secrets.NEST_REFRESH_TOKEN }}
+          # SmartThings OAuth — needed by garage_close. Same secrets as
+          # hourly.yml; the token itself must carry x:devices:* scope
+          # (granted by the smartthings_bootstrap.py re-auth).
+          SMARTTHINGS_CLIENT_ID:     ${{ secrets.SMARTTHINGS_CLIENT_ID }}
+          SMARTTHINGS_CLIENT_SECRET: ${{ secrets.SMARTTHINGS_CLIENT_SECRET }}
+          SMARTTHINGS_REFRESH_TOKEN: ${{ secrets.SMARTTHINGS_REFRESH_TOKEN }}
+          SMARTTHINGS_DEVICE_ID:     ${{ secrets.SMARTTHINGS_DEVICE_ID }}
+          # Somfy TaHoma — needed by awnings_close / awnings_open.
+          TAHOMA_EMAIL:    ${{ secrets.TAHOMA_EMAIL }}
+          TAHOMA_PASSWORD: ${{ secrets.TAHOMA_PASSWORD }}
         # Default `bash -e {0}` is what we want here: control.py exits 1
         # if any device call failed and we WANT that to surface as a failed
         # run (turns into a GH email + red dot in the Actions UI, which is
         # how Daniel learns the button didn't fully work).
         run: python control.py "${{ inputs.action }}"
+
+      # Persist the rotated SmartThings token even if the action failed —
+      # same rationale as hourly.yml: losing a rotation strands the token.
+      - name: Save SmartThings OAuth state
+        if: always() && hashFiles('smartthings-oauth-state.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: smartthings-oauth-state.json
+          key: ptown-st-oauth-${{ github.run_id }}

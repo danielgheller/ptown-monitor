@@ -827,6 +827,9 @@ CONTROL_BUTTONS = [
     ("tub_104",        "🛁 Tub → 104°F",         "heat the tub for use"),
     ("nest_off_eco",   "🌡️ Thermostats off eco", "exit eco, keep last setpoint"),
     ("master_bath_72", "🦶 Master bath → 72°F",  "warm up the master bath floor"),
+    ("garage_close",   "🚪 Close garage",        "close the garage door (close-only)"),
+    ("awnings_close",  "⛱️ Awnings in",          "retract all awnings"),
+    ("awnings_open",   "🏖️ Awnings out",         "extend all awnings"),
 ]
 
 

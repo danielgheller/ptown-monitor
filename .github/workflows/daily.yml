@@ -20,6 +20,13 @@ on:
     - cron: '17 9 * * *'
   workflow_dispatch:
 
+# Serialize against the hourly workflow (same group name) so the two can't
+# refresh the rotating SmartThings token at the same time and double-spend it.
+# See hourly.yml for the full rationale.
+concurrency:
+  group: ptown-monitor-oauth
+  cancel-in-progress: false
+
 # Opt all JS-based actions into Node 24. GitHub is deprecating Node 20 on
 # their runners in mid-2026; this env var is their documented escape hatch so
 # we don't have to track every action's major-version bump individually.

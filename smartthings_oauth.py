@@ -40,6 +40,7 @@ import fcntl
 import json
 import os
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -152,25 +153,63 @@ def get_access_token() -> str:
     if access and expires_at - now > REFRESH_BUFFER_S:
         return access
 
-    refresh = state.get("refresh_token") or env_refresh
-    if not refresh:
+    # Try the cached (rotated) token first, then fall back to the bootstrap
+    # secret. The cached token can be dead for two reasons: a concurrent run
+    # already spent it (rotation invalidates the prior token immediately), or
+    # its 30-day sliding window lapsed. In both cases the bootstrap secret is
+    # the recovery path, so we try it before giving up — and critically, we
+    # do NOT leave a known-dead token on disk for the next run to re-cache.
+    cached_refresh = (state.get("refresh_token") or "").strip()
+    candidates: list[str] = []
+    for tok in (cached_refresh, env_refresh):
+        if tok and tok not in candidates:
+            candidates.append(tok)
+    if not candidates:
         raise RuntimeError(
             "No refresh_token available — set SMARTTHINGS_REFRESH_TOKEN "
             "in .env (or GH Secrets) and re-run, or re-do the OAuth auth "
             "flow if it's been > 30 days."
         )
 
-    resp = _do_refresh(client_id, client_secret, refresh)
-    new_state = {
-        "access_token": resp["access_token"],
-        # SmartThings rotates refresh tokens; fall back to the previous
-        # value if the response doesn't include one (defensive).
-        "refresh_token": resp.get("refresh_token", refresh),
-        "expires_at": now + int(resp.get("expires_in", 86400)),
-        "scope": resp.get("scope"),
-    }
-    _write_state(path, new_state)
-    return new_state["access_token"]
+    last_err: Exception | None = None
+    for refresh in candidates:
+        try:
+            resp = _do_refresh(client_id, client_secret, refresh)
+        except urllib.error.HTTPError as e:
+            # 400 == invalid_grant: this refresh_token is dead. Try the next
+            # candidate (the bootstrap secret) before failing. Re-raise any
+            # other HTTP error (5xx, rate-limit, etc.) untouched.
+            last_err = e
+            if e.code == 400:
+                continue
+            raise
+        new_state = {
+            "access_token": resp["access_token"],
+            # SmartThings rotates refresh tokens; fall back to the token we
+            # just used if the response omits one (defensive).
+            "refresh_token": resp.get("refresh_token", refresh),
+            "expires_at": now + int(resp.get("expires_in", 86400)),
+            "scope": resp.get("scope"),
+        }
+        _write_state(path, new_state)
+        return new_state["access_token"]
+
+    # Every candidate was rejected. Delete the poisoned state file so the
+    # workflow's cache-save step (guarded on the file existing) skips it
+    # instead of re-persisting a dead token. Without this, the bad token gets
+    # re-cached every run and the failure can never self-heal — which is
+    # exactly the loop that produced the daily CRIT emails. With it gone, the
+    # next run bootstraps fresh from SMARTTHINGS_REFRESH_TOKEN.
+    try:
+        path.unlink()
+    except OSError:
+        pass
+    raise RuntimeError(
+        "SmartThings refresh failed for all candidate tokens — cached and "
+        "bootstrap refresh_tokens are both dead. Re-run the OAuth auth flow, "
+        "update the SMARTTHINGS_REFRESH_TOKEN secret, and purge the "
+        f"ptown-st-oauth-* Actions caches. (last error: {last_err})"
+    )
 
 
 if __name__ == "__main__":

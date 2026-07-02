@@ -57,6 +57,12 @@ const ACTIONS = {
   tub_104:        { inPtownEffect: "create", workflowAction: "tub_104",        confirm: "🛁 Heating the tub to 104°F. You're flagged in-Ptown so the cost-protection WARN won't fire. Allow ~30 min to reach temp." },
   nest_off_eco:   { inPtownEffect: "create", workflowAction: "nest_off_eco",   confirm: "🌡️ Taking all 3 Nest thermostats out of eco mode. They'll resume their last HEAT setpoints. You're flagged in-Ptown." },
   master_bath_72: { inPtownEffect: "create", workflowAction: "master_bath_72", confirm: "🦶 Master bath floor → 72°F. You're flagged in-Ptown. The floor takes a while to feel warm — check back in 20-30 min." },
+  // The three below don't imply arriving or leaving (you might close the
+  // garage remotely while away, or pull the awnings in for wind while home),
+  // so they deliberately leave IN_PTOWN untouched.
+  garage_close:   { inPtownEffect: "none",   workflowAction: "garage_close",   confirm: "🚪 Closing the garage door. The next hourly check will confirm it reads CLOSED — no news is good news." },
+  awnings_close:  { inPtownEffect: "none",   workflowAction: "awnings_close",  confirm: "⛱️ Retracting all awnings. RTS motors don't report position, so this is fire-and-forget — glance at a camera if you need certainty." },
+  awnings_open:   { inPtownEffect: "none",   workflowAction: "awnings_open",   confirm: "🏖️ Extending all awnings. RTS motors don't report position, so this is fire-and-forget." },
 };
 
 // Base64-encode a string as UTF-8 bytes. The naive `btoa(str)` only handles
