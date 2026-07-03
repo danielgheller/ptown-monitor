@@ -17,9 +17,9 @@ Actions
   master_bath_72    Nuheat thermostat with "master" in its name → 72°F.
   garage_close      Send CLOSE to the Overhead Door garage (SmartThings).
                     Close-only by design — no remote open.
-  awnings_close     Retract all Somfy awnings (TaHoma/Overkiz). RTS motors
-                    are one-way, so success = "command accepted", not
-                    "confirmed closed".
+  awnings_close     Retract all Somfy awnings (TaHoma → SmartThings). RTS
+                    motors are one-way, so success = "command accepted",
+                    not "confirmed closed".
   awnings_open      Extend all Somfy awnings.
 
 Why "exit eco only" instead of also setting a heat target: the user picked
@@ -325,13 +325,17 @@ def action_garage_close() -> list[dict]:
         return [_result("garage:door", False, str(e))]
 
 
-# ---------- Awning actions (Somfy TaHoma / Overkiz) ----------
+# ---------- Awning actions (Somfy TaHoma via SmartThings) ----------
 def action_awnings(verb: str) -> list[dict]:
-    """Send open/close to every awning. RTS = fire-and-forget: 'ok' means
-    the Overkiz cloud accepted the command, not that the awning moved."""
-    import tahoma  # local import: pyoverkiz needs Python 3.12+; only load
-                   # it when an awning action is actually requested
-    return tahoma.run_verb(verb)
+    """Send open/close to every awning, through SmartThings.
+
+    RTS = fire-and-forget: 'ok' means SmartThings accepted the command,
+    not that the awning moved. Somfy's own NA cloud is closed to third
+    parties (see awnings.py header), so this rides the same OAuth-In
+    SmartApp as the garage and lock.
+    """
+    import awnings  # local import to keep module load light
+    return awnings.run_command(verb)
 
 
 # ---------- IN_PTOWN flag (committed by the workflow, not by us) ----------

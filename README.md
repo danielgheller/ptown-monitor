@@ -145,28 +145,29 @@ credentials with garage and lock.
 ## Awnings (Somfy via TaHoma)
 
 The awnings pair to a TaHoma hub and are **RTS motors — one-way radio with
-no position feedback**, so there is nothing to monitor hourly; `tahoma.py`
-is control-only and is deliberately NOT in `all.py` / the dashboard.
+no position feedback**, so there is nothing to monitor hourly; awning
+support is control-only and is deliberately NOT in `all.py` / the dashboard.
 
-API path: the Overkiz cloud API (the same one the TaHoma app uses), via
-the `pyoverkiz` library against the North America server. Somfy's old Open
-API was sunset in June 2022. Credentials are just the TaHoma app login
-(`TAHOMA_EMAIL` / `TAHOMA_PASSWORD` in `.env` + GH secrets). Etiquette:
-one login + one command per invocation — Somfy bans abusive pollers, and
-button-tap usage is far below any threshold.
+API path: **TaHoma → SmartThings** (`awnings.py`), riding the same
+OAuth-In SmartApp as the garage and lock — zero extra credentials. Somfy's
+own cloud is a dead end for third parties in North America: the Dec 2024
+unified-account migration killed password login, and the app-generated
+Developer Mode token only authorizes the hub's LOCAL API (unreachable from
+GH Actions). `tahoma.py` documents that whole investigation and every
+failed cloud path; don't re-walk it.
 
-    ./ptown tahoma --discover     # list devices, confirm the awnings + commands
-    ./ptown tahoma close          # retract all awnings
-    ./ptown tahoma open           # extend all awnings
-    ./ptown tahoma close --match deck   # subset by label
+One-time setup: SmartThings app → Add device → Partner devices → **"Somfy
+Window Treatment"** → sign in with the TaHoma account → authorize. The
+awnings then show up as `windowShade` devices.
 
-Requires Python 3.12+ (pyoverkiz v2). The control workflow runs 3.12; if
-your local venv is older, `pip install -r requirements.txt` silently skips
-pyoverkiz and only `./ptown tahoma` is affected.
+    ./ptown awnings --discover    # list windowShade devices on the account
+    ./ptown awnings close         # retract all awnings
+    ./ptown awnings open          # extend all awnings
+    ./ptown awnings close --match deck   # subset by label
 
 Email buttons: **Awnings in** / **Awnings out** dispatch `awnings_close` /
 `awnings_open` through control.yml, same one-tap plumbing as the tub and
-Nest buttons. "Success" means the Overkiz cloud accepted the command —
+Nest buttons. "Success" means SmartThings accepted the command —
 fire-and-forget by hardware design.
 
 ## Notes

@@ -100,9 +100,10 @@ jobs:
           SMARTTHINGS_CLIENT_SECRET: ${{ secrets.SMARTTHINGS_CLIENT_SECRET }}
           SMARTTHINGS_REFRESH_TOKEN: ${{ secrets.SMARTTHINGS_REFRESH_TOKEN }}
           SMARTTHINGS_DEVICE_ID:     ${{ secrets.SMARTTHINGS_DEVICE_ID }}
-          # Somfy TaHoma — needed by awnings_close / awnings_open.
-          TAHOMA_EMAIL:    ${{ secrets.TAHOMA_EMAIL }}
-          TAHOMA_PASSWORD: ${{ secrets.TAHOMA_PASSWORD }}
+          # Awnings (awnings_close / awnings_open) need NO extra secrets —
+          # they ride the SmartThings OAuth above via the TaHoma ↔
+          # SmartThings linked service. Somfy's own NA cloud is closed to
+          # third parties (see awnings.py header for the full story).
         # Default `bash -e {0}` is what we want here: control.py exits 1
         # if any device call failed and we WANT that to surface as a failed
         # run (turns into a GH email + red dot in the Actions UI, which is

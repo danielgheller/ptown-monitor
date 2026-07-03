@@ -1,6 +1,22 @@
 #!/usr/bin/env python3
 """
-Somfy awning control for the Ptown house (TaHoma / Overkiz cloud API).
+Somfy awning control via the Overkiz cloud API — SUPERSEDED, kept as a
+post-mortem and for possible on-LAN use.
+
+*** Production awning control lives in awnings.py (TaHoma → SmartThings).***
+
+Why superseded (July 2026 investigation): Somfy's Dec 2024 unified-account
+migration closed North America cloud access to third parties. Every cloud
+path fails for a migrated account:
+  - legacy userId/password on ha401-1  → 401
+  - unified OAuth JWT as Bearer on NA  → "An API key is required..."
+  - unified OAuth JWT→session exchange → 401 Bad credentials
+  - unified OAuth on EU endpoint       → "No such user account"
+  - app-generated Developer Mode token → cloud: Bad credentials
+The Developer Mode token authorizes only the hub's LOCAL API (port 8443 on
+the Ptown LAN) — unreachable from GitHub Actions. This module still works
+against nothing cloud-side today; it MAY be useful from a laptop at the
+house via the local API someday. See home-assistant/core#132228.
 
 The awnings are RTS motors — one-way radio, no state feedback by hardware
 design — so this module is CONTROL-ONLY. It is deliberately NOT part of the
@@ -66,18 +82,45 @@ def load_env(path: Path) -> None:
         os.environ.setdefault(k.strip(), v)
 
 
-def _credentials() -> tuple[str, str]:
+def _credentials() -> tuple[str, str, str]:
+    """Return (token, email, password); token is the preferred auth.
+
+    TAHOMA_TOKEN is an app-generated Developer Mode token (TaHoma app →
+    Configure installation → gateway parameters → tap the PIN 7 times →
+    Developer Mode → generate token). Since Somfy's Dec 2024 unified-account
+    migration this is the ONLY auth the NA cloud platform accepts from
+    third parties — password login returns 401/"An API key is required".
+    Email/password are kept as a fallback for never-migrated accounts.
+    """
+    token = (os.environ.get("TAHOMA_TOKEN") or "").strip()
     email = (os.environ.get("TAHOMA_EMAIL") or "").strip()
     password = (os.environ.get("TAHOMA_PASSWORD") or "").strip()
-    if not email or not password:
-        raise RuntimeError("TAHOMA_EMAIL / TAHOMA_PASSWORD not set")
-    return email, password
+    if not token and not (email and password):
+        raise RuntimeError(
+            "No TaHoma credentials — set TAHOMA_TOKEN (preferred; generate "
+            "in the TaHoma app under Developer Mode) or TAHOMA_EMAIL + "
+            "TAHOMA_PASSWORD in .env / GH secrets."
+        )
+    return token, email, password
 
 
 # ---------- pyoverkiz import shim (v1 vs v2 API) ----------
 # pyoverkiz had a v2 rewrite (credentials objects, Python 3.12+). Support
 # both call styles so a version bump doesn't strand us.
-def _import_pyoverkiz():
+#
+# LOGIN PATH GOTCHA (learned the hard way, July 2026): pyoverkiz — v1 AND
+# v2.0.3 — only routes the modern accounts.somfy.com OAuth login for
+# Server.SOMFY_EUROPE. Server.SOMFY_AMERICA falls through to the legacy
+# userId/userPassword form login on ha401-1.overkiz.com, which Somfy killed
+# for accounts migrated to the unified Somfy login (Dec 2024 migration) —
+# it just returns 401 even with correct credentials. The auth strategy is
+# chosen by the `server` FIELD of the ServerConfig while requests go to the
+# `endpoint` field, so we can force the unified OAuth against the NA
+# endpoint with a hybrid config. We try, in order:
+#   1. unified OAuth + NA endpoint  (migrated NA account, NA installation)
+#   2. unified OAuth + EU endpoint  (installation moved to global platform)
+#   3. legacy form login + NA endpoint  (never-migrated NA account)
+def _client_factories():
     try:
         from pyoverkiz.client import OverkizClient  # noqa: F401
     except ImportError as e:
@@ -88,24 +131,141 @@ def _import_pyoverkiz():
     from pyoverkiz.client import OverkizClient
     from pyoverkiz.models import Command
 
+    factories: list[tuple[str, object]] = []
     try:  # v2
         from pyoverkiz.auth.credentials import UsernamePasswordCredentials
-        from pyoverkiz.enums import Server
+        from pyoverkiz.auth.strategies import SomfyAuthStrategy
+        from pyoverkiz.const import SUPPORTED_SERVERS
+        from pyoverkiz.enums import APIType, Server
+        from pyoverkiz.models import ServerConfig
 
-        def make_client(email: str, password: str) -> "OverkizClient":
-            return OverkizClient(
-                server=Server.SOMFY_AMERICA,
-                credentials=UsernamePasswordCredentials(email, password),
-            )
+        na_endpoint = SUPPORTED_SERVERS[Server.SOMFY_AMERICA].endpoint
+
+        class _SomfyJwtSessionStrategy(SomfyAuthStrategy):
+            """Unified Somfy OAuth → classic Overkiz cookie session.
+
+            The NA platform (ha401-1) rejects raw Bearer JWTs with "An API
+            key is required to access this setup", but accepts the classic
+            cookie-session login when the JWT is posted as a form field —
+            the same jwt-exchange pattern pyoverkiz uses for CozyTouch.
+            Field name isn't documented for Somfy NA, so we try the known
+            Overkiz variants in order.
+            """
+
+            async def login(self) -> None:
+                await super().login()  # accounts.somfy.com OAuth → context token
+                token = self.context.access_token
+                last = None
+                for payload in (
+                    {"jwt": token},
+                    {"accessToken": token},
+                    {"userId": self.credentials.username, "ssoToken": token},
+                ):
+                    async with self.session.post(
+                        f"{self.server.endpoint}login",
+                        data=payload,
+                        ssl=self._ssl,
+                    ) as response:
+                        if response.status in (200, 204):
+                            return
+                        last = f"{response.status} {(await response.text())[:120]}"
+                raise RuntimeError(f"jwt→session exchange failed: {last}")
+
+            async def auth_headers(self, path: str | None = None):
+                return {}  # cookie session carries auth; no Bearer header
+
+        _hybrid_na = ServerConfig(
+            server=Server.SOMFY_EUROPE,  # selects SomfyAuthStrategy in factory
+            name="Somfy (North America, unified login)",
+            endpoint=na_endpoint,        # requests still go to ha401-1
+            manufacturer="Somfy",
+            api_type=APIType.CLOUD,
+        )
+
+        def _make(server_or_config, jwt_session: bool = False):
+            def make_client(email: str, password: str) -> "OverkizClient":
+                client = OverkizClient(
+                    server=server_or_config,
+                    credentials=UsernamePasswordCredentials(email, password),
+                )
+                if jwt_session:
+                    client._auth = _SomfyJwtSessionStrategy(
+                        UsernamePasswordCredentials(email, password),
+                        client.session,
+                        client.server_config,
+                        client._ssl,
+                    )
+                return client
+            return make_client
+
+        factories = [
+            ("somfy-oauth-jwt-session+NA", _make(_hybrid_na, jwt_session=True)),
+            ("somfy-oauth-bearer+NA", _make(_hybrid_na)),
+            ("somfy-oauth+EU-endpoint", _make(Server.SOMFY_EUROPE)),
+            ("legacy-NA-login", _make(Server.SOMFY_AMERICA)),
+        ]
     except ImportError:  # v1
         from pyoverkiz.const import SUPPORTED_SERVERS
 
-        def make_client(email: str, password: str) -> "OverkizClient":
+        def make_client_v1(email: str, password: str) -> "OverkizClient":
             return OverkizClient(
                 email, password, server=SUPPORTED_SERVERS["somfy_north_america"]
             )
 
-    return make_client, Command
+        factories = [("legacy-NA-login", make_client_v1)]
+
+    return factories, Command
+
+
+def _token_factory():
+    """Factory for the app-generated Developer Mode token (Bearer on cloud NA)."""
+    from pyoverkiz.auth.credentials import TokenCredentials
+    from pyoverkiz.client import OverkizClient
+    from pyoverkiz.enums import Server
+
+    def make_client(token: str) -> "OverkizClient":
+        return OverkizClient(
+            server=Server.SOMFY_AMERICA,
+            credentials=TokenCredentials(token=token),
+        )
+    return make_client
+
+
+async def _login_any(token: str, email: str, password: str):
+    """Try each login path in order; return (client, devices, path_label).
+
+    A path is accepted only if login succeeds AND the account has devices
+    there — a unified account can authenticate against a platform that
+    doesn't host the installation (0 devices), which shouldn't win.
+    """
+    candidates: list[tuple[str, object]] = []
+    if token:
+        candidates.append(("devmode-token+NA", None))  # placeholder, built below
+    if email and password:
+        factories, _ = _client_factories()
+        candidates.extend(factories)
+
+    errors: list[str] = []
+    for label, make in candidates:
+        client = None
+        try:
+            if label == "devmode-token+NA":
+                client = _token_factory()(token)
+            else:
+                client = make(email, password)
+            await client.login()
+            devices = await client.get_devices()
+            if devices:
+                return client, devices, label
+            errors.append(f"{label}: login ok but 0 devices")
+        except Exception as e:  # try the next path
+            errors.append(f"{label}: {e}")
+        if client is not None:
+            try:
+                await client.close()
+            except Exception:
+                pass
+    raise RuntimeError("all Somfy login paths failed — " + " | ".join(errors))
 
 
 # ---------- device inspection helpers ----------
@@ -156,14 +316,13 @@ def _resolve_command(device, verb: str) -> str:
 
 # ---------- core actions ----------
 async def _run(verb: str | None, match: str | None, discover: bool) -> dict:
-    make_client, Command = _import_pyoverkiz()
-    email, password = _credentials()
+    _, Command = _client_factories()
+    token, email, password = _credentials()
 
     out: dict = {"system": "tahoma", "action": verb, "results": [], "devices": []}
-    async with make_client(email, password) as client:
-        await client.login()
-        devices = await client.get_devices()
-
+    client, devices, login_path = await _login_any(token, email, password)
+    out["login_path"] = login_path
+    try:
         if discover:
             for d in devices:
                 out["devices"].append({
@@ -210,6 +369,11 @@ async def _run(verb: str | None, match: str | None, discover: bool) -> dict:
                 out["results"].append({
                     "device": f"tahoma:{_label(d)}", "ok": False, "detail": str(e),
                 })
+    finally:
+        try:
+            await client.close()
+        except Exception:
+            pass
     return out
 
 
@@ -250,7 +414,8 @@ def main() -> int:
         return 0 if all(r["ok"] for r in out["results"]) else 1
 
     if args.discover:
-        print(f"TaHoma devices — {len(out['devices'])} found:")
+        print(f"TaHoma devices — {len(out['devices'])} found "
+              f"(login path: {out.get('login_path')}):")
         for d in out["devices"]:
             tag = "  [AWNING]" if d["is_awning"] else ""
             print(f"  {d['label']:<30} {d['ui_class']:<16} "
