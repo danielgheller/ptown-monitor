@@ -41,29 +41,82 @@ import smartthings_oauth
 
 HERE = Path(__file__).resolve().parent
 
-SHADE_CAPABILITY = "windowShade"
 COMMANDS = ("open", "close", "pause")
 
+# Capabilities Somfy's linked service may expose, in preference order.
+# Stateful shades get `windowShade` (direct open/close/pause commands);
+# one-way RTS motors are often exposed with the STATELESS capability
+# `statelessCurtainPowerButton`, whose single `setButton` command takes the
+# verb as an argument. `windowShadeLevel` is a last-resort position setter.
+SHADE_CAPABILITIES = ("windowShade", "statelessCurtainPowerButton",
+                      "windowShadeLevel")
 
-def device_has_shade_capability(dev: dict) -> bool:
+
+def _shade_capability(dev: dict) -> str | None:
+    """Return the best-matching shade capability id for this device."""
+    caps: set[str] = set()
     for component in dev.get("components", []):
         for cap in component.get("capabilities", []):
-            if cap.get("id") == SHADE_CAPABILITY:
-                return True
-    return False
+            caps.add(cap.get("id"))
+    for wanted in SHADE_CAPABILITIES:
+        if wanted in caps:
+            return wanted
+    return None
 
 
 def find_shade_devices(devices: list[dict]) -> list[dict]:
-    return [d for d in devices if device_has_shade_capability(d)]
+    return [d for d in devices if _shade_capability(d) is not None]
 
 
-def send_shade_command(token: str, device_id: str, command: str) -> dict:
-    """Send a windowShade command ('open'/'close'/'pause'). Needs x:devices:*."""
-    payload = {"commands": [
-        {"component": "main", "capability": SHADE_CAPABILITY, "command": command}
-    ]}
-    return garage._post(f"{garage.API_BASE}/devices/{device_id}/commands",
-                        token, payload)
+def _device_caps(dev: dict) -> list[str]:
+    out: list[str] = []
+    for component in dev.get("components", []):
+        for cap in component.get("capabilities", []):
+            if cap.get("id"):
+                out.append(cap["id"])
+    return out
+
+
+def _inventory(devices: list[dict]) -> str:
+    """Compact device inventory for diagnostics — skips the ~40 Caseta
+    switches (pure `switch` devices) so the interesting ones stand out."""
+    lines: list[str] = []
+    skipped = 0
+    for d in devices:
+        caps = _device_caps(d)
+        if set(caps) <= {"switch", "switchLevel", "refresh", "healthCheck"}:
+            skipped += 1
+            continue
+        label = d.get("label") or d.get("name") or d.get("deviceId", "?")
+        lines.append(f"{label}[{','.join(sorted(set(caps)))}]")
+    return "; ".join(lines) + f" (+{skipped} plain switches hidden)"
+
+
+def _command_payload(capability: str, verb: str) -> dict:
+    """Map a verb to the right command shape for the capability."""
+    if capability == "statelessCurtainPowerButton":
+        return {"component": "main", "capability": capability,
+                "command": "setButton", "arguments": [verb]}
+    if capability == "windowShadeLevel":
+        level = {"open": 100, "close": 0}.get(verb)
+        if level is None:
+            raise ValueError(f"windowShadeLevel can't express '{verb}'")
+        return {"component": "main", "capability": capability,
+                "command": "setShadeLevel", "arguments": [level]}
+    return {"component": "main", "capability": capability, "command": verb}
+
+
+def send_shade_command(token: str, dev: dict, verb: str) -> str:
+    """Send `verb` using the device's best capability. Needs x:devices:*.
+
+    Returns the capability used (for result details)."""
+    capability = _shade_capability(dev)
+    if capability is None:
+        raise ValueError("device has no shade capability")
+    payload = {"commands": [_command_payload(capability, verb)]}
+    garage._post(f"{garage.API_BASE}/devices/{dev['deviceId']}/commands",
+                 token, payload)
+    return capability
 
 
 def run_command(command: str, match: str | None = None) -> list[dict]:
@@ -79,7 +132,8 @@ def run_command(command: str, match: str | None = None) -> list[dict]:
         return [{"device": "awnings:auth", "ok": False, "detail": str(e)}]
 
     try:
-        shades = find_shade_devices(garage.list_devices(token))
+        devices = garage.list_devices(token)
+        shades = find_shade_devices(devices)
     except Exception as e:
         return [{"device": "awnings:discover", "ok": False, "detail": str(e)}]
 
@@ -88,18 +142,19 @@ def run_command(command: str, match: str | None = None) -> list[dict]:
                   if match.lower() in (d.get("label") or d.get("name") or "").lower()]
     if not shades:
         return [{"device": "awnings:discover", "ok": False,
-                 "detail": "no windowShade devices found"
+                 "detail": "no shade-capable devices found"
                            + (f" matching '{match}'" if match else "")
                            + " — is the Somfy Window Treatment linked service "
-                             "connected in SmartThings?"}]
+                             "connected in SmartThings? Inventory: "
+                           + _inventory(devices)}]
 
     out: list[dict] = []
     for d in shades:
         name = d.get("label") or d.get("name") or d.get("deviceId", "?")
         try:
-            send_shade_command(token, d["deviceId"], command)
+            cap = send_shade_command(token, d, command)
             out.append({"device": f"awnings:{name}", "ok": True,
-                        "detail": f"command → {command}"})
+                        "detail": f"command → {command} (via {cap})"})
         except Exception as e:
             out.append({"device": f"awnings:{name}", "ok": False, "detail": str(e)})
     return out
