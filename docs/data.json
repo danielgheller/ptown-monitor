@@ -1,6 +1,6 @@
 {
   "current": {
-    "timestamp": "2026-07-03T11:40:35+0000",
+    "timestamp": "2026-07-03T14:29:50+0000",
     "overall_status": "ok",
     "in_ptown": true,
     "systems": [
@@ -12,7 +12,7 @@
         "devices": [
           {
             "name": "guest floor",
-            "current_f": 71.4,
+            "current_f": 69.5,
             "setpoint_f": 41.0,
             "mode": "idle",
             "online": true,
@@ -22,7 +22,7 @@
           },
           {
             "name": "cabana floor",
-            "current_f": 66.7,
+            "current_f": 67.0,
             "setpoint_f": 41.0,
             "mode": "idle",
             "online": true,
@@ -32,7 +32,7 @@
           },
           {
             "name": "primary floor",
-            "current_f": 67.5,
+            "current_f": 68.2,
             "setpoint_f": 41.0,
             "mode": "idle",
             "online": true,
@@ -74,12 +74,12 @@
         "devices": [
           {
             "name": "Cabana",
-            "current_f": 69.6,
+            "current_f": 69.5,
             "setpoint_f": 69.4,
             "mode": "Cool, HVAC off",
             "online": true,
             "extra": {
-              "humidity": 64,
+              "humidity": 61,
               "hvac_status": "off",
               "thermostat_mode": "cool",
               "eco_mode": "off",
@@ -91,8 +91,8 @@
           },
           {
             "name": "Primary Bedroom",
-            "current_f": 66.9,
-            "setpoint_f": 67.2,
+            "current_f": 69.6,
+            "setpoint_f": 72.2,
             "mode": "Cool, HVAC off",
             "online": true,
             "extra": {
@@ -101,7 +101,7 @@
               "thermostat_mode": "cool",
               "eco_mode": "off",
               "heat_f": null,
-              "cool_f": 67.2
+              "cool_f": 72.2
             },
             "status": "ok",
             "reason": null
@@ -110,11 +110,11 @@
             "name": "Kitchen",
             "current_f": 70.5,
             "setpoint_f": 70.4,
-            "mode": "Cool, HVAC off",
+            "mode": "Cool, HVAC cooling",
             "online": true,
             "extra": {
-              "humidity": 54,
-              "hvac_status": "off",
+              "humidity": 52,
+              "hvac_status": "cooling",
               "thermostat_mode": "cool",
               "eco_mode": "off",
               "heat_f": null,
@@ -139,7 +139,7 @@
             "online": true,
             "extra": {
               "door_state": "closed",
-              "last_changed": "2026-07-02T13:30:00.125Z"
+              "last_changed": "2026-07-03T13:29:59.988Z"
             },
             "status": "ok",
             "reason": null
@@ -156,12 +156,12 @@
             "name": "Front Door",
             "current_f": null,
             "setpoint_f": null,
-            "mode": "locked",
+            "mode": "unlocked",
             "online": true,
             "extra": {
-              "lock_state": "locked",
+              "lock_state": "unlocked",
               "battery_level": 89,
-              "last_changed": "2026-07-03T09:20:13.842Z"
+              "last_changed": "2026-07-03T12:36:07.773Z"
             },
             "status": "ok",
             "reason": null
@@ -535,11 +535,11 @@
             "name": "Master Bathroom Sconces",
             "current_f": null,
             "setpoint_f": null,
-            "mode": "off",
+            "mode": "on",
             "online": true,
             "extra": {
               "device_id": "5e7e4b5c-d512-4a8e-afb9-33ea6f026edd",
-              "level": 0
+              "level": 100
             },
             "status": "ok",
             "reason": null
@@ -561,11 +561,11 @@
             "name": "Master Bedroom Main Lights",
             "current_f": null,
             "setpoint_f": null,
-            "mode": "off",
+            "mode": "on",
             "online": true,
             "extra": {
               "device_id": "28a18f3a-114e-4dc1-8168-6acfa535ebad",
-              "level": 0
+              "level": 100
             },
             "status": "ok",
             "reason": null
@@ -574,11 +574,11 @@
             "name": "Master Bedroom Sconces",
             "current_f": null,
             "setpoint_f": null,
-            "mode": "off",
+            "mode": "on",
             "online": true,
             "extra": {
               "device_id": "f5b2a73d-b531-49d2-93c5-daebd55b1281",
-              "level": 0
+              "level": 50
             },
             "status": "ok",
             "reason": null
@@ -611,11 +611,11 @@
             "name": "Stairs CabanaEntry Landings",
             "current_f": null,
             "setpoint_f": null,
-            "mode": "off",
+            "mode": "on",
             "online": true,
             "extra": {
               "device_id": "19e293ef-f68c-424b-a3d1-e3cd831d976d",
-              "level": 0
+              "level": 100
             },
             "status": "ok",
             "reason": null
@@ -624,11 +624,11 @@
             "name": "Stairs Entry Green Lights",
             "current_f": null,
             "setpoint_f": null,
-            "mode": "off",
+            "mode": "on",
             "online": true,
             "extra": {
               "device_id": "11dabda6-3b25-4f73-9d66-003fadfe112d",
-              "level": 0
+              "level": 100
             },
             "status": "ok",
             "reason": null
@@ -637,11 +637,11 @@
             "name": "Stairs Garage Staircase",
             "current_f": null,
             "setpoint_f": null,
-            "mode": "off",
+            "mode": "on",
             "online": true,
             "extra": {
               "device_id": "f58b264c-3573-4ebb-a47d-08ccc6d60fad",
-              "level": 0
+              "level": 100
             },
             "status": "ok",
             "reason": null
@@ -650,11 +650,11 @@
             "name": "Stairs Guest Landing",
             "current_f": null,
             "setpoint_f": null,
-            "mode": "off",
+            "mode": "on",
             "online": true,
             "extra": {
               "device_id": "aed2b058-8abd-46c9-b275-80ce9a20ee3b",
-              "level": 0
+              "level": 100
             },
             "status": "ok",
             "reason": null
@@ -663,11 +663,11 @@
             "name": "Stairs Living Room Landing",
             "current_f": null,
             "setpoint_f": null,
-            "mode": "off",
+            "mode": "on",
             "online": true,
             "extra": {
               "device_id": "d7c87e5b-1ce8-4f8e-86ad-d0761cc4d872",
-              "level": 0
+              "level": 100
             },
             "status": "ok",
             "reason": null
@@ -676,11 +676,11 @@
             "name": "Stairs Master Landing",
             "current_f": null,
             "setpoint_f": null,
-            "mode": "off",
+            "mode": "on",
             "online": true,
             "extra": {
               "device_id": "b64a9b22-aa55-4ef2-841d-b3992b39a974",
-              "level": 0
+              "level": 100
             },
             "status": "ok",
             "reason": null
@@ -689,11 +689,11 @@
             "name": "Stairs Wet Bar Sconces",
             "current_f": null,
             "setpoint_f": null,
-            "mode": "off",
+            "mode": "on",
             "online": true,
             "extra": {
               "device_id": "fc2874c9-2848-494f-b30c-1e08e5f49fe9",
-              "level": 0
+              "level": 100
             },
             "status": "ok",
             "reason": null
@@ -728,39 +728,6 @@
     ]
   },
   "history_hourly": [
-    {
-      "timestamp": "2026-06-30T20:17:25+0000",
-      "readings": {
-        "nuheat:guest floor": {
-          "set": 41.0,
-          "now": 73.6
-        },
-        "nuheat:cabana floor": {
-          "set": 41.0,
-          "now": 67.9
-        },
-        "nuheat:primary floor": {
-          "set": 41.0,
-          "now": 71.7
-        },
-        "hottub:Jacuzzi J-335": {
-          "set": 102.0,
-          "now": 102.0
-        },
-        "nest:Cabana": {
-          "set": 74.7,
-          "now": 71.7
-        },
-        "nest:Primary Bedroom": {
-          "set": 74.1,
-          "now": 74.3
-        },
-        "nest:Kitchen": {
-          "set": 73.3,
-          "now": 72.6
-        }
-      }
-    },
     {
       "timestamp": "2026-06-30T22:37:29+0000",
       "readings": {
@@ -2599,6 +2566,219 @@
           "now": null
         }
       }
+    },
+    {
+      "timestamp": "2026-07-03T14:29:50+0000",
+      "readings": {
+        "nuheat:guest floor": {
+          "set": 41.0,
+          "now": 69.5
+        },
+        "nuheat:cabana floor": {
+          "set": 41.0,
+          "now": 67.0
+        },
+        "nuheat:primary floor": {
+          "set": 41.0,
+          "now": 68.2
+        },
+        "hottub:Jacuzzi J-335": {
+          "set": 102.0,
+          "now": 102.0
+        },
+        "nest:Cabana": {
+          "set": 69.4,
+          "now": 69.5
+        },
+        "nest:Primary Bedroom": {
+          "set": 72.2,
+          "now": 69.6
+        },
+        "nest:Kitchen": {
+          "set": 70.4,
+          "now": 70.5
+        },
+        "garage:My Door": {
+          "set": null,
+          "now": null
+        },
+        "lock:Front Door": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Cabana Bathroom Main Lights": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Cabana Bathroom Sconces": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Cabana Bedroom Cove Lights": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Cabana Bedroom Main Lights": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Cabana Bedroom Table Lamp": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Cabana Bedroom Table Lamps": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Cabana Porch Sconces": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Front Porch Sconces": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Garage Main Lights": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Guest Bathroom Main Lights": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Guest Bathroom Sconces": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Guest Bedroom Closet Light": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Guest Bedroom Desk Lamp": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Guest Bedroom Main Lights": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Guest Bedroom Table Lamps": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Guest Porch Sconces": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Kitchen Dining Room Main": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Kitchen Entry Art Light": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Kitchen Kitchen Main": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Kitchen Table Pendants": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Kitchen Under Cabinet": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Laundry Room Cubby": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Laundry Room Main Lights": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Living Room Art Lights": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Living Room Main Lights": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Living Room Pendants": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Living Room Porch Sconces": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Master Bathroom Main Lights": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Master Bathroom Sconces": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Master Bedroom Closet Light": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Master Bedroom Main Lights": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Master Bedroom Sconces": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Master Porch Sconces": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Roof Deck Back Porch Lights": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Stairs CabanaEntry Landings": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Stairs Entry Green Lights": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Stairs Garage Staircase": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Stairs Guest Landing": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Stairs Living Room Landing": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Stairs Master Landing": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Stairs Wet Bar Sconces": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Storage Under Roof Wall Lights": {
+          "set": null,
+          "now": null
+        },
+        "caseta:Wet Bar Undercounter Lights": {
+          "set": null,
+          "now": null
+        }
+      }
     }
   ],
   "history_daily": [
@@ -2988,19 +3168,19 @@
     },
     {
       "date": "2026-07-03",
-      "timestamp": "2026-07-03T11:40:35+0000",
+      "timestamp": "2026-07-03T14:29:50+0000",
       "readings": {
         "nuheat:guest floor": {
           "set": 41.0,
-          "now": 71.4
+          "now": 69.5
         },
         "nuheat:cabana floor": {
           "set": 41.0,
-          "now": 66.7
+          "now": 67.0
         },
         "nuheat:primary floor": {
           "set": 41.0,
-          "now": 67.5
+          "now": 68.2
         },
         "hottub:Jacuzzi J-335": {
           "set": 102.0,
@@ -3008,11 +3188,11 @@
         },
         "nest:Cabana": {
           "set": 69.4,
-          "now": 69.6
+          "now": 69.5
         },
         "nest:Primary Bedroom": {
-          "set": 67.2,
-          "now": 66.9
+          "set": 72.2,
+          "now": 69.6
         },
         "nest:Kitchen": {
           "set": 70.4,
@@ -3201,5 +3381,5 @@
       }
     }
   ],
-  "generated_at": "2026-07-03T11:40:35+0000"
+  "generated_at": "2026-07-03T14:29:51+0000"
 }
