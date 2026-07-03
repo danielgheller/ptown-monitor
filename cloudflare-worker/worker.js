@@ -63,6 +63,7 @@ const ACTIONS = {
   garage_close:   { inPtownEffect: "none",   workflowAction: "garage_close",   confirm: "🚪 Closing the garage door. The next hourly check will confirm it reads CLOSED — no news is good news." },
   awnings_close:  { inPtownEffect: "none",   workflowAction: "awnings_close",  confirm: "⛱️ Retracting all awnings. RTS motors don't report position, so this is fire-and-forget — glance at a camera if you need certainty." },
   awnings_open:   { inPtownEffect: "none",   workflowAction: "awnings_open",   confirm: "🏖️ Extending all awnings. RTS motors don't report position, so this is fire-and-forget." },
+  tvs_off:        { inPtownEffect: "none",   workflowAction: "tvs_off",        confirm: "📺 Turning all Samsung TVs off. The next hourly check will confirm they read OFF." },
 };
 
 // Base64-encode a string as UTF-8 bytes. The naive `btoa(str)` only handles

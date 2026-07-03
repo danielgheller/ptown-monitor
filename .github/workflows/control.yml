@@ -30,6 +30,7 @@ on:
           - garage_close
           - awnings_close
           - awnings_open
+          - tvs_off
 
 # Shares the OAuth concurrency group with hourly.yml/daily.yml because
 # garage_close refreshes the same rotating SmartThings token — a control tap

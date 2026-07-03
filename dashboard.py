@@ -34,7 +34,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-SCRIPTS = ["nuheat", "hottub", "nest", "garage", "lock", "caseta"]
+SCRIPTS = ["nuheat", "hottub", "nest", "garage", "lock", "caseta", "tv"]
 PER_SCRIPT_TIMEOUT = 60  # seconds
 
 # ---------- in-ptown toggle ----------
@@ -302,6 +302,25 @@ def _evaluate_caseta(device: dict, *, away: bool) -> tuple[str, str | None]:
     return Status.WARN, f"state {state!r}"
 
 
+def _evaluate_tv(device: dict, *, away: bool) -> tuple[str, str | None]:
+    """Samsung TV evaluator. Cost/panel-wear rule (Daniel, 2026-07-03):
+    a TV on while AWAY is a WARN — and Art Mode counts as ON (his explicit
+    call: a Frame showing art still draws power and burns panel hours).
+    Deep-standby TVs routinely drop offline in SmartThings; that's normal,
+    not an alert. When in Ptown, TVs on are expected.
+    """
+    if not device.get("online"):
+        return Status.OK, None  # deep standby reads as offline — fine
+    state = (device.get("mode") or "").lower()
+    if state.startswith("on"):  # matches "on" and "on (art mode)"
+        if away:
+            return Status.WARN, f"{state} while away"
+        return Status.OK, None
+    if state == "off":
+        return Status.OK, None
+    return Status.WARN, f"state {state!r}"
+
+
 EVALUATORS = {
     "nuheat": _evaluate_nuheat,
     "hottub": _evaluate_hottub,
@@ -309,6 +328,7 @@ EVALUATORS = {
     "garage": _evaluate_garage,
     "lock": _evaluate_lock,
     "caseta": _evaluate_caseta,
+    "tv": _evaluate_tv,
 }
 
 SYSTEM_LABELS = {
@@ -318,6 +338,7 @@ SYSTEM_LABELS = {
     "garage": "Garage door",
     "lock": "Front door lock",
     "caseta": "Caseta lights",
+    "tv": "Samsung TVs",
 }
 
 

@@ -9,9 +9,12 @@ vendor's cloud API and prints the current state of the devices in that system.
 - `garage.py` — Overhead Door garage via OHD Anywhere → SmartThings ✅
 - `lock.py` — Yale front door lock via Yale Access → SmartThings ✅
 - `caseta.py` — Lutron Caseta lighting via Caseta Bridge → SmartThings ✅
-- `tahoma.py` — Somfy awnings via TaHoma/Overkiz cloud (control-only; RTS
-  motors have no status readback) ✅
-- `all.py` — runs all six monitored systems in parallel and prints a
+- `awnings.py` — Somfy awnings via TaHoma → SmartThings (control-only; RTS
+  motors have no status readback; `tahoma.py` is the superseded direct-API
+  attempt, kept as a post-mortem) ✅
+- `tv.py` — Samsung Frame TVs via SmartThings (on/off + art mode status,
+  off control; dormant until the TVs are linked to the account) ✅
+- `all.py` — runs all monitored systems in parallel and prints a
   combined status ✅
 
 ## One-time setup
@@ -169,6 +172,27 @@ Email buttons: **Awnings in** / **Awnings out** dispatch `awnings_close` /
 `awnings_open` through control.yml, same one-tap plumbing as the tub and
 Nest buttons. "Success" means SmartThings accepted the command —
 fire-and-forget by hardware design.
+
+## Samsung Frame TVs (via SmartThings)
+
+`tv.py` monitors the two Frame TVs and provides a **TVs off** button.
+Samsung TVs are SmartThings-native — one-time setup is signing each TV
+into the Samsung account (TV → Settings → General → System Manager →
+Samsung Account) or adding them in the SmartThings app on the house WiFi.
+Until then the module reports zero devices quietly (no nagging).
+
+Dashboard rule: **TV on while away = WARN**, and **Art Mode counts as ON**
+(Daniel's call — a Frame showing art still draws power and burns panel
+hours). Deep-standby TVs often drop offline in SmartThings; that reads as
+OK, not an alert.
+
+Known Frame quirk to verify once linked: some firmware lands SmartThings
+`switch off` in Art Mode rather than standby. If the **📺 TVs off** button
+"succeeds" but the art keeps glowing, see tv.py's header before debugging.
+
+    ./ptown tv                    # status of both TVs
+    ./ptown tv --discover         # confirm the TVs joined the account
+    ./ptown tv --off              # turn them off
 
 ## Notes
 

@@ -830,6 +830,7 @@ CONTROL_BUTTONS = [
     ("garage_close",   "🚪 Close garage",        "close the garage door (close-only)"),
     ("awnings_close",  "⛱️ Awnings in",          "retract all awnings"),
     ("awnings_open",   "🏖️ Awnings out",         "extend all awnings"),
+    ("tvs_off",        "📺 TVs off",             "turn all Samsung TVs off"),
 ]
 
 

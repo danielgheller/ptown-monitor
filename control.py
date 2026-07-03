@@ -325,6 +325,15 @@ def action_garage_close() -> list[dict]:
         return [_result("garage:door", False, str(e))]
 
 
+# ---------- TV action (Samsung via SmartThings) ----------
+def action_tvs_off() -> list[dict]:
+    """Turn every Samsung TV off. Art Mode counts as on, so 'off' means
+    OFF — though some Frame firmware lands switch-off in Art Mode; see
+    tv.py header if the button seems to half-work."""
+    import tv  # local import to keep module load light
+    return tv.run_off()
+
+
 # ---------- Awning actions (Somfy TaHoma via SmartThings) ----------
 def action_awnings(verb: str) -> list[dict]:
     """Send open/close to every awning, through SmartThings.
@@ -356,6 +365,7 @@ ACTIONS = {
     "garage_close":   "Close the garage door (close-only by design)",
     "awnings_close":  "Retract all Somfy awnings",
     "awnings_open":   "Extend all Somfy awnings",
+    "tvs_off":        "Turn all Samsung TVs off (art mode counts as on)",
 }
 
 
@@ -381,6 +391,8 @@ def run_action(action: str) -> tuple[list[dict], bool]:
         results += action_awnings("close")
     elif action == "awnings_open":
         results += action_awnings("open")
+    elif action == "tvs_off":
+        results += action_tvs_off()
     else:
         return [_result("action", False, f"unknown action: {action}")], False
 

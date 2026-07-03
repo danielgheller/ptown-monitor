@@ -95,11 +95,16 @@ def device_capabilities(dev: dict) -> set[str]:
 
 def is_switch_device(dev: dict) -> bool:
     """Yes if it has `switch` and is NOT the garage door (which also exposes
-    `switch` via the garageDoorControl module on some SmartThings drivers)."""
+    `switch` via the garageDoorControl module on some SmartThings drivers)
+    and NOT a TV (Samsung TVs expose `switch` too — they belong to tv.py,
+    and counting a Frame as a 'light left on' would double-report it)."""
     caps = device_capabilities(dev)
     if SWITCH_CAPABILITY not in caps:
         return False
     if any(d in caps for d in DOOR_CAPABILITIES):
+        return False
+    if any(c.startswith("samsungvd.") for c in caps) or "tvChannel" in caps \
+            or "mediaInputSource" in caps:
         return False
     return True
 
