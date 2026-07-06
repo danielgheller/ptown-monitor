@@ -94,6 +94,11 @@ def _inventory(devices: list[dict]) -> str:
 
 def _command_payload(capability: str, verb: str) -> dict:
     """Map a verb to the right command shape for the capability."""
+    # Somfy's TaHoma-SmartThings link uses window-shade semantics where
+    # "open" = shade raised = awning RETRACTED (confirmed physically at the
+    # house, 2026-07-06). Invert here so this module's user-facing verbs
+    # match awning intuition: open = extend fabric, close = retract.
+    verb = {"open": "close", "close": "open"}.get(verb, verb)
     if capability == "statelessCurtainPowerButton":
         return {"component": "main", "capability": capability,
                 "command": "setButton", "arguments": [verb]}
