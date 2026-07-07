@@ -34,7 +34,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-SCRIPTS = ["nuheat", "hottub", "nest", "garage", "lock", "caseta", "tv"]
+SCRIPTS = ["nuheat", "hottub", "nest", "garage", "lock", "caseta", "tv",
+           "awnings"]
 PER_SCRIPT_TIMEOUT = 60  # seconds
 
 # ---------- in-ptown toggle ----------
@@ -321,6 +322,16 @@ def _evaluate_tv(device: dict, *, away: bool) -> tuple[str, str | None]:
     return Status.WARN, f"state {state!r}"
 
 
+def _evaluate_awnings(device: dict, *, away: bool) -> tuple[str, str | None]:
+    """Awning evaluator — INFORMATIONAL ONLY, always OK. The position is
+    assumed from the last command sent through this system; the physical
+    wall remotes are invisible (RTS one-way radio), so alerting on assumed
+    state would produce false alarms. The row exists so Daniel can see the
+    awnings in the rundown (his ask, 2026-07-03), not to warn.
+    """
+    return Status.OK, None
+
+
 EVALUATORS = {
     "nuheat": _evaluate_nuheat,
     "hottub": _evaluate_hottub,
@@ -329,6 +340,7 @@ EVALUATORS = {
     "lock": _evaluate_lock,
     "caseta": _evaluate_caseta,
     "tv": _evaluate_tv,
+    "awnings": _evaluate_awnings,
 }
 
 SYSTEM_LABELS = {
@@ -339,6 +351,7 @@ SYSTEM_LABELS = {
     "lock": "Front door lock",
     "caseta": "Caseta lights",
     "tv": "Samsung TVs",
+    "awnings": "Awnings",
 }
 
 

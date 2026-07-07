@@ -11,9 +11,14 @@ SmartThings cloud exactly like the garage (OHD) and lock (Yale). Same
 OAuth-In SmartApp, same scopes (x:devices:* for commands), zero new
 credentials. See tahoma.py for the direct-API attempt and its post-mortem.
 
-The awnings are RTS motors — one-way radio. SmartThings tracks an ASSUMED
-state (last command it sent), not ground truth, so this module is
-CONTROL-ONLY and is not part of the hourly monitoring run.
+The awnings are RTS motors — one-way radio, no position feedback. What the
+monitor CAN show honestly is the last command sent through this system:
+run_command() records it to awnings-state.json (persisted across CI runs
+via the Actions cache, same pattern as the SmartThings OAuth state), and
+the --json monitor mode reports each awning as "closed (assumed)" /
+"open (assumed)" based on that record. Commands from the physical wall
+remotes are invisible by hardware design — the dashboard row is labeled
+"assumed" for exactly that reason, and the evaluator never alerts on it.
 
 One-time setup:
     SmartThings app → Add device → Partner devices → "Somfy Window
@@ -21,6 +26,8 @@ One-time setup:
     The awnings then appear as windowShade devices on the account.
 
 Usage:
+    python3 awnings.py                 # status (assumed, from last command)
+    python3 awnings.py --json          # normalized JSON for dashboard.py
     python3 awnings.py --discover      # list windowShade-capable devices
     python3 awnings.py close           # retract ALL awnings
     python3 awnings.py open            # extend ALL awnings
@@ -34,12 +41,14 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 
 import garage  # SmartThings HTTP helpers + .env loader (same account/token)
 import smartthings_oauth
 
 HERE = Path(__file__).resolve().parent
+STATE_FILE = HERE / "awnings-state.json"
 
 COMMANDS = ("open", "close", "pause")
 
@@ -124,6 +133,70 @@ def send_shade_command(token: str, dev: dict, verb: str) -> str:
     return capability
 
 
+# ---------- last-command state (assumed position) ----------
+def _read_state() -> dict | None:
+    try:
+        return json.loads(STATE_FILE.read_text())
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+
+
+def _write_state(command: str, match: str | None, device_names: list[str]) -> None:
+    try:
+        STATE_FILE.write_text(json.dumps({
+            "command": command,
+            "match": match,
+            "at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+            "devices": device_names,
+        }, indent=2))
+    except OSError:
+        pass  # state is best-effort; never fail a command over it
+
+
+def _assumed_mode(name: str, state: dict | None) -> tuple[str, dict]:
+    """Return (mode_string, extra) for one awning given the recorded state."""
+    if not state:
+        return "unknown (no command recorded)", {}
+    extra = {"last_command": state.get("command"), "at": state.get("at"),
+             "assumed": True}
+    # A --match command only moved a subset; anything not in the recorded
+    # device list keeps whatever it had — which we don't know.
+    if state.get("match") and name not in (state.get("devices") or []):
+        return "unknown (last command was partial)", extra
+    verb = (state.get("command") or "").lower()
+    if verb == "close":
+        return "closed (assumed)", extra
+    if verb == "open":
+        return "open (assumed)", extra
+    return f"{verb or 'unknown'} (assumed)", extra
+
+
+def status_json() -> dict:
+    """Monitor-mode payload for dashboard.py: one row per awning with the
+    assumed position from the last recorded command."""
+    garage.load_env(HERE / ".env")
+    try:
+        token = smartthings_oauth.get_access_token()
+        shades = find_shade_devices(garage.list_devices(token))
+    except Exception as e:
+        return {"system": "awnings", "devices": [],
+                "error": f"SmartThings auth/list failed: {e}"}
+    state = _read_state()
+    devices = []
+    for d in shades:
+        name = d.get("label") or d.get("name") or d.get("deviceId", "?")
+        mode, extra = _assumed_mode(name, state)
+        devices.append({
+            "name": name,
+            "current_f": None,
+            "setpoint_f": None,
+            "mode": mode,
+            "online": True,  # RTS = no health signal; don't invent one
+            "extra": extra,
+        })
+    return {"system": "awnings", "devices": devices, "error": None}
+
+
 def run_command(command: str, match: str | None = None) -> list[dict]:
     """Send `command` to every awning (optionally label-filtered).
 
@@ -154,14 +227,19 @@ def run_command(command: str, match: str | None = None) -> list[dict]:
                            + _inventory(devices)}]
 
     out: list[dict] = []
+    succeeded: list[str] = []
     for d in shades:
         name = d.get("label") or d.get("name") or d.get("deviceId", "?")
         try:
             cap = send_shade_command(token, d, command)
+            succeeded.append(name)
             out.append({"device": f"awnings:{name}", "ok": True,
                         "detail": f"command → {command} (via {cap})"})
         except Exception as e:
             out.append({"device": f"awnings:{name}", "ok": False, "detail": str(e)})
+    if succeeded:
+        # Record the assumed position for the dashboard (see module header).
+        _write_state(command, match, succeeded)
     return out
 
 
@@ -176,8 +254,21 @@ def main() -> int:
     parser.add_argument("--json", dest="emit_json", action="store_true")
     args = parser.parse_args()
 
+    # No command and no --discover → status mode (assumed position from
+    # the last recorded command). This is what the hourly run calls.
     if not args.discover and not args.command:
-        parser.error("need a command (open/close/pause) or --discover")
+        payload = status_json()
+        if args.emit_json:
+            print(json.dumps(payload))
+            return 2 if payload["error"] else 0
+        if payload["error"]:
+            print(f"awnings: ERROR — {payload['error']}", file=sys.stderr)
+            return 2
+        print(f"Awnings — {len(payload['devices'])} device(s), positions "
+              f"ASSUMED from last recorded command (wall remotes invisible):")
+        for dev in payload["devices"]:
+            print(f"  {dev['name']:<28} {dev['mode'].upper()}")
+        return 0
 
     if args.discover:
         garage.load_env(HERE / ".env")

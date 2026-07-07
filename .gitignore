@@ -12,6 +12,7 @@ __pycache__/
 # Runtime state — persisted via GitHub Actions cache between runs.
 # Safe to delete locally; will be regenerated on next run.
 notify-state.json
+awnings-state.json
 
 # SmartThings OAuth state — holds the rolling access_token + refresh_token
 # (which rotates on every refresh). Persisted via GitHub Actions cache.

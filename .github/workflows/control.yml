@@ -31,6 +31,8 @@ on:
           - awnings_close
           - awnings_open
           - tvs_off
+          - arrive_summer
+          - arrive_winter
 
 # Shares the OAuth concurrency group with hourly.yml/daily.yml because
 # garage_close refreshes the same rotating SmartThings token — a control tap
@@ -84,6 +86,18 @@ jobs:
           restore-keys: |
             ptown-st-oauth-
 
+      # Awning assumed-position record (last command sent). Written by the
+      # awning actions here, read by the hourly/daily dashboard runs so the
+      # rundown can show "closed (assumed)". Restore first so a partial
+      # (--match) command doesn't clobber knowledge of a prior full one.
+      - name: Restore awnings state
+        uses: actions/cache/restore@v4
+        with:
+          path: awnings-state.json
+          key: ptown-awnings-state-${{ github.run_id }}
+          restore-keys: |
+            ptown-awnings-state-
+
       - name: Apply ${{ inputs.action }}
         env:
           NUHEAT_EMAIL:       ${{ secrets.NUHEAT_EMAIL }}
@@ -119,3 +133,10 @@ jobs:
         with:
           path: smartthings-oauth-state.json
           key: ptown-st-oauth-${{ github.run_id }}
+
+      - name: Save awnings state
+        if: always() && hashFiles('awnings-state.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: awnings-state.json
+          key: ptown-awnings-state-${{ github.run_id }}

@@ -17,6 +17,9 @@
 //   GITHUB_TOKEN   - fine-grained PAT, contents:write AND actions:write
 //                    on danielgheller/ptown-monitor only.
 //   TOGGLE_SECRET  - shared secret with notify.py for HMAC signing.
+//   PERSONAL_TOKEN - static secret for Daniel's own always-valid URLs
+//                    (?k=...) used by iOS Shortcuts / physical buttons.
+//                    Optional: if unset, only signed links work.
 //
 // Token format (notify.py builds these, worker validates):
 //   t  = HMAC-SHA256(TOGGLE_SECRET, "<action>:<ts>")
@@ -53,7 +56,7 @@ const IN_PTOWN_BODY =
 const ACTIONS = {
   arrive:         { inPtownEffect: "create", workflowAction: null,             confirm: "🏠 You're in Ptown. Cost-protection is now OFF — adjust everything however you like." },
   leave:          { inPtownEffect: "delete", workflowAction: null,             confirm: "✈️ You've left Ptown. Cost-protection is now ON — you'll get a WARN email if any device is bumped above baseline." },
-  away_all:       { inPtownEffect: "delete", workflowAction: "away_all",       confirm: "✈️ All-away applied. Tub → 65°F, Nest → eco, floors → 41°F. Cost-protection is now ON. Devices update over the next minute or two." },
+  away_all:       { inPtownEffect: "delete", workflowAction: "away_all",       confirm: "✈️ All-away applied. Tub → 65°F, Nest → eco, floors → 41°F, front door → locked. Cost-protection is now ON. Devices update over the next minute or two." },
   tub_104:        { inPtownEffect: "create", workflowAction: "tub_104",        confirm: "🛁 Heating the tub to 104°F. You're flagged in-Ptown so the cost-protection WARN won't fire. Allow ~30 min to reach temp." },
   nest_off_eco:   { inPtownEffect: "create", workflowAction: "nest_off_eco",   confirm: "🌡️ Taking all 3 Nest thermostats out of eco mode. They'll resume their last HEAT setpoints. You're flagged in-Ptown." },
   master_bath_72: { inPtownEffect: "create", workflowAction: "master_bath_72", confirm: "🦶 Master bath floor → 72°F. You're flagged in-Ptown. The floor takes a while to feel warm — check back in 20-30 min." },
@@ -64,6 +67,11 @@ const ACTIONS = {
   awnings_close:  { inPtownEffect: "none",   workflowAction: "awnings_close",  confirm: "⛱️ Retracting all awnings. RTS motors don't report position, so this is fire-and-forget — glance at a camera if you need certainty." },
   awnings_open:   { inPtownEffect: "none",   workflowAction: "awnings_open",   confirm: "🏖️ Extending all awnings. RTS motors don't report position, so this is fire-and-forget." },
   tvs_off:        { inPtownEffect: "none",   workflowAction: "tvs_off",        confirm: "📺 Turning all Samsung TVs off. The next hourly check will confirm they read OFF." },
+  // Seasonal arrival presets (2026-07-06). Both flip IN_PTOWN to in.
+  // Neither touches awnings or lights — those should already be
+  // closed/off from the last departure.
+  arrive_summer:  { inPtownEffect: "create", workflowAction: "arrive_summer",  confirm: "☀️ Summer arrival: tub → 102°F READY, Nests → COOL 70°F (Cabana 73°F). You're flagged in-Ptown. Tub takes ~30 min." },
+  arrive_winter:  { inPtownEffect: "create", workflowAction: "arrive_winter",  confirm: "❄️ Winter arrival: tub → 104°F READY, Nests → HEAT 69°F, master bath floor → 75°F. You're flagged in-Ptown. Tub takes ~30 min." },
 };
 
 // Base64-encode a string as UTF-8 bytes. The naive `btoa(str)` only handles
@@ -93,25 +101,39 @@ export default {
       return htmlResponse(`Unknown action: ${action}`, 404);
     }
 
-    // Validate token (timestamp + HMAC). Same scheme as before — every
-    // action shares the signing format so notify.py only has one path to
-    // build URLs. Catches stale email-scanner replays (TTL) and tampering.
-    const ts = url.searchParams.get("ts");
-    const t = url.searchParams.get("t");
-    if (!ts || !t) {
-      return expiredResponse(action, "missing token — link is malformed");
-    }
-    const tsNum = parseInt(ts, 10);
-    if (!Number.isFinite(tsNum)) {
-      return expiredResponse(action, "bad timestamp");
-    }
-    const now = Math.floor(Date.now() / 1000);
-    if (Math.abs(now - tsNum) > TOKEN_TTL_SECONDS) {
-      return expiredResponse(action, "this email link is older than 30 days");
-    }
-    const expected = await hmacHex(env.TOGGLE_SECRET, `${action}:${ts}`);
-    if (!constantTimeEqual(t, expected)) {
-      return expiredResponse(action, "signature didn't validate");
+    // Auth: two modes.
+    //
+    // 1. Personal token (?k=...) — a static secret for surfaces Daniel
+    //    configures once and keeps forever: iOS Shortcuts, physical
+    //    buttons. No expiry; revoke by rotating the PERSONAL_TOKEN
+    //    secret (`wrangler secret put PERSONAL_TOKEN`). These URLs live
+    //    only on Daniel's own devices, unlike email links which transit
+    //    mail servers and scanners — hence the different trust model.
+    //
+    // 2. Signed email link (?ts=...&t=...) — timestamp + HMAC with a
+    //    30-day TTL, built by notify.py. Catches stale email-scanner
+    //    replays and tampering.
+    const k = url.searchParams.get("k");
+    const personalOk =
+      k && env.PERSONAL_TOKEN && constantTimeEqual(k, env.PERSONAL_TOKEN);
+    if (!personalOk) {
+      const ts = url.searchParams.get("ts");
+      const t = url.searchParams.get("t");
+      if (!ts || !t) {
+        return expiredResponse(action, "missing token — link is malformed");
+      }
+      const tsNum = parseInt(ts, 10);
+      if (!Number.isFinite(tsNum)) {
+        return expiredResponse(action, "bad timestamp");
+      }
+      const now = Math.floor(Date.now() / 1000);
+      if (Math.abs(now - tsNum) > TOKEN_TTL_SECONDS) {
+        return expiredResponse(action, "this email link is older than 30 days");
+      }
+      const expected = await hmacHex(env.TOGGLE_SECRET, `${action}:${ts}`);
+      if (!constantTimeEqual(t, expected)) {
+        return expiredResponse(action, "signature didn't validate");
+      }
     }
 
     // Apply the IN_PTOWN side effect FIRST, then dispatch the workflow.

@@ -61,6 +61,15 @@ jobs:
           restore-keys: |
             ptown-st-oauth-
 
+      # Awning assumed-position record — read-only, see hourly.yml.
+      - name: Restore awnings state
+        uses: actions/cache/restore@v4
+        with:
+          path: awnings-state.json
+          key: ptown-awnings-state-${{ github.run_id }}
+          restore-keys: |
+            ptown-awnings-state-
+
       - name: Send daily summary
         env:
           NUHEAT_EMAIL:       ${{ secrets.NUHEAT_EMAIL }}

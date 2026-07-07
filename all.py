@@ -27,7 +27,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 
 # Order matters — this is the order the sections print in.
-SCRIPTS = ["nuheat", "hottub", "nest", "garage", "lock", "caseta", "tv"]
+SCRIPTS = ["nuheat", "hottub", "nest", "garage", "lock", "caseta", "tv",
+           "awnings"]
 
 PER_SCRIPT_TIMEOUT = 60  # seconds
 

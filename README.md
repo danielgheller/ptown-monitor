@@ -148,8 +148,12 @@ credentials with garage and lock.
 ## Awnings (Somfy via TaHoma)
 
 The awnings pair to a TaHoma hub and are **RTS motors — one-way radio with
-no position feedback**, so there is nothing to monitor hourly; awning
-support is control-only and is deliberately NOT in `all.py` / the dashboard.
+no position feedback**. The dashboard shows an **assumed** position — the
+last command sent through this system (recorded in `awnings-state.json`,
+persisted via the Actions cache) — labeled "(assumed)" because the physical
+wall remotes are invisible to it. The row is informational only and never
+alerts; until the first button press after deploy it reads "unknown (no
+command recorded)".
 
 API path: **TaHoma → SmartThings** (`awnings.py`), riding the same
 OAuth-In SmartApp as the garage and lock — zero extra credentials. Somfy's

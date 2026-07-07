@@ -823,7 +823,9 @@ def _toggle_label(in_ptown: bool) -> str:
 # .github/workflows/control.yml's `inputs.action`. If you rename one, rename
 # all three.
 CONTROL_BUTTONS = [
-    ("away_all",       "✈️ All away",            "everything → away/eco/freeze"),
+    ("arrive_summer",  "☀️ Arrive — summer",     "tub 102°F, Nests cool 70°F (Cabana 73°F)"),
+    ("arrive_winter",  "❄️ Arrive — winter",     "tub 104°F, Nests heat 69°F, master floor 75°F"),
+    ("away_all",       "✈️ All away",            "away/eco/freeze + lock front door"),
     ("tub_104",        "🛁 Tub → 104°F",         "heat the tub for use"),
     ("nest_off_eco",   "🌡️ Thermostats off eco", "exit eco, keep last setpoint"),
     ("master_bath_72", "🦶 Master bath → 72°F",  "warm up the master bath floor"),

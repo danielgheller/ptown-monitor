@@ -10,6 +10,7 @@ Actions
 -------
   away_all          Tub setpoint → 65°F + heat mode REST.
                     Nest (all 3) → manual_eco. Floors (all) → 41°F.
+                    Front door → locked (lock-only; no remote unlock).
                     Side effect: marks IN_PTOWN flag as away (caller commits).
   tub_104           Tub → 104°F, heat mode READY (active heating).
   nest_off_eco      All Nest thermostats: set ThermostatEco.SetMode OFF.
@@ -71,6 +72,17 @@ NUHEAT_AWAY_F = 41.0          # freeze-protect baseline (matches dashboard.py wa
 NUHEAT_MASTER_BATH_F = 72.0   # comfortable arrival temp for the master bath floor
 TUB_AWAY_F = 65.0             # cool-off baseline; matches cost-protection alert threshold
 TUB_HOT_F = 104.0             # standard "ready to use" hot tub temp
+
+# Seasonal arrival presets (Daniel's spec, 2026-07-06). Two explicit buttons
+# rather than auto-by-month — he chooses in the moment. Neither touches
+# awnings or lights: the expectation is they're already closed/off.
+# Summer runs the Nests in COOL, winter in HEAT — explicit setpoints both
+# ways so arrival temps are predictable.
+TUB_SUMMER_F = 102.0              # summer soak temp
+NUHEAT_MASTER_BATH_WINTER_F = 75.0  # winter arrival, master bath floor
+NEST_SUMMER_DEFAULT_F = 70.0      # COOL: Primary Bedroom + Kitchen
+NEST_SUMMER_BY_NAME_F = {"cabana": 73.0}  # lowercase substring → °F override
+NEST_WINTER_F = 69.0              # HEAT: all three thermostats
 
 
 # ---------- result aggregation ----------
@@ -208,6 +220,60 @@ def action_nest_eco_off() -> list[dict]:
     return out
 
 
+def action_nest_set_temp(mode: str, by_name_f: dict[str, float],
+                         default_f: float) -> list[dict]:
+    """Exit eco, assert HEAT or COOL mode, and set an explicit setpoint.
+
+    HOUSE INVARIANT (Daniel, 2026-07-06): all three thermostats share one
+    physical HVAC system, so the house is EITHER heating OR cooling —
+    never a mix. Eco is the only per-thermostat exception (two can run
+    COOL while one sits in eco). Any action that touches thermostat mode
+    must therefore apply the SAME mode to every thermostat, which this
+    function does by construction. Never build a per-device mode button.
+
+    mode is "HEAT" or "COOL" — picks both the thermostat mode and the
+    matching setpoint command (SetHeat/SetCool). by_name_f maps a
+    lowercase substring of the thermostat's display name to °F; anything
+    unmatched gets default_f. Command order matters: setpoint commands
+    fail while eco is active, so eco OFF must go first, and the setpoint
+    command must match the active mode, so SetMode goes second.
+    """
+    setpoint_cmd = ("sdm.devices.commands.ThermostatTemperatureSetpoint."
+                    + ("SetCool" if mode == "COOL" else "SetHeat"))
+    setpoint_key = "coolCelsius" if mode == "COOL" else "heatCelsius"
+    out: list[dict] = []
+    try:
+        access_token, thermostats = _nest_setup()
+    except Exception as e:
+        return [_result("nest:setup", False, str(e))]
+    for d in thermostats:
+        name = nest_mod._short_name(d)
+        resource = d.get("name", "")
+        temp_f = default_f
+        for frag, val in by_name_f.items():
+            if frag in name.lower():
+                temp_f = val
+                break
+        temp_c = round((temp_f - 32) * 5 / 9, 2)
+        try:
+            nest_mod.execute_command(
+                resource, access_token,
+                "sdm.devices.commands.ThermostatEco.SetMode", {"mode": "OFF"},
+            )
+            nest_mod.execute_command(
+                resource, access_token,
+                "sdm.devices.commands.ThermostatMode.SetMode", {"mode": mode},
+            )
+            nest_mod.execute_command(
+                resource, access_token, setpoint_cmd, {setpoint_key: temp_c},
+            )
+            out.append(_result(f"nest:{name}", True,
+                               f"eco off, {mode.lower()} → {temp_f:.0f}°F"))
+        except Exception as e:
+            out.append(_result(f"nest:{name}", False, str(e)))
+    return out
+
+
 # ---------- SmartTub actions ----------
 # The python-smarttub library is async-only and requires aiohttp. We isolate
 # all the async machinery inside one helper that returns a sync list of
@@ -325,6 +391,39 @@ def action_garage_close() -> list[dict]:
         return [_result("garage:door", False, str(e))]
 
 
+# ---------- Front door lock (Yale via SmartThings) ----------
+def action_lock_front_door() -> list[dict]:
+    """Lock the front door. Lock-only by design — no remote unlock.
+
+    Requires SMARTTHINGS_LOCK_DEVICE_ID: Daniel's account has TWO Yale
+    locks both labeled "Front Door" (different properties), so
+    auto-discovery could lock the wrong house. The pinned ID is the
+    102 Bayberry (Ptown) lock. Fail loudly if it's missing rather than
+    guess.
+    """
+    import garage  # SmartThings HTTP helpers
+    import smartthings_oauth
+
+    device_id = (os.environ.get("SMARTTHINGS_LOCK_DEVICE_ID") or "").strip()
+    if not device_id:
+        return [_result("lock:config", False,
+                        "SMARTTHINGS_LOCK_DEVICE_ID not set — refusing to "
+                        "auto-discover (two locks share the same label)")]
+    try:
+        token = smartthings_oauth.get_access_token()
+    except Exception as e:
+        return [_result("lock:auth", False, str(e))]
+    try:
+        garage._post(
+            f"{garage.API_BASE}/devices/{device_id}/commands", token,
+            {"commands": [{"component": "main", "capability": "lock",
+                           "command": "lock"}]},
+        )
+        return [_result("lock:Front Door", True, "lock command accepted")]
+    except Exception as e:
+        return [_result("lock:Front Door", False, str(e))]
+
+
 # ---------- TV action (Samsung via SmartThings) ----------
 def action_tvs_off() -> list[dict]:
     """Turn every Samsung TV off. Art Mode counts as on, so 'off' means
@@ -366,6 +465,8 @@ ACTIONS = {
     "awnings_close":  "Retract all Somfy awnings",
     "awnings_open":   "Extend all Somfy awnings",
     "tvs_off":        "Turn all Samsung TVs off (art mode counts as on)",
+    "arrive_summer":  "Summer arrival: tub 102°F READY; Nests COOL 70°F (Cabana 73°F)",
+    "arrive_winter":  "Winter arrival: tub 104°F READY; Nests HEAT 69°F; master bath floor 75°F",
 }
 
 
@@ -374,11 +475,12 @@ def run_action(action: str) -> tuple[list[dict], bool]:
     results: list[dict] = []
 
     if action == "away_all":
-        # Run all three system-side calls. They're independent — a Nest
+        # Run all the system-side calls. They're independent — a Nest
         # failure shouldn't prevent us from setting the tub or floors.
         results += action_tub_set(TUB_AWAY_F, "REST")
         results += action_nest_eco_on()
         results += action_nuheat_set(NUHEAT_AWAY_F, only_master_bath=False)
+        results += action_lock_front_door()
     elif action == "tub_104":
         results += action_tub_set(TUB_HOT_F, "READY")
     elif action == "nest_off_eco":
@@ -393,6 +495,16 @@ def run_action(action: str) -> tuple[list[dict], bool]:
         results += action_awnings("open")
     elif action == "tvs_off":
         results += action_tvs_off()
+    elif action == "arrive_summer":
+        # Seasonal arrivals deliberately leave awnings and lights alone —
+        # the away flow should have closed/switched those already.
+        results += action_tub_set(TUB_SUMMER_F, "READY")
+        results += action_nest_set_temp("COOL", NEST_SUMMER_BY_NAME_F,
+                                        NEST_SUMMER_DEFAULT_F)
+    elif action == "arrive_winter":
+        results += action_tub_set(TUB_HOT_F, "READY")
+        results += action_nest_set_temp("HEAT", {}, NEST_WINTER_F)
+        results += action_nuheat_set(NUHEAT_MASTER_BATH_WINTER_F, only_master_bath=True)
     else:
         return [_result("action", False, f"unknown action: {action}")], False
 

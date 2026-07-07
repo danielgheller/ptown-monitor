@@ -90,6 +90,17 @@ jobs:
           restore-keys: |
             ptown-st-oauth-
 
+      # Awning assumed-position record, written by control.yml's awning
+      # actions. Read-only here (awnings.py status mode); no save step.
+      # Cache miss = "unknown (no command recorded)" rows — fine.
+      - name: Restore awnings state
+        uses: actions/cache/restore@v4
+        with:
+          path: awnings-state.json
+          key: ptown-awnings-state-${{ github.run_id }}
+          restore-keys: |
+            ptown-awnings-state-
+
       - name: Run checks, notify, and build site
         env:
           NUHEAT_EMAIL:       ${{ secrets.NUHEAT_EMAIL }}
