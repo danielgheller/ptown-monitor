@@ -1,6 +1,6 @@
 {
   "current": {
-    "timestamp": "2026-07-11T12:03:03+0000",
+    "timestamp": "2026-07-11T13:50:47+0000",
     "overall_status": "crit",
     "in_ptown": true,
     "systems": [
@@ -132,27 +132,6 @@
     ]
   },
   "history_hourly": [
-    {
-      "timestamp": "2026-07-09T00:19:46+0000",
-      "readings": {
-        "hottub:Jacuzzi J-335": {
-          "set": 72.0,
-          "now": 98.1
-        },
-        "nest:Cabana": {
-          "set": 76.0,
-          "now": 69.5
-        },
-        "nest:Primary Bedroom": {
-          "set": 76.0,
-          "now": 76.6
-        },
-        "nest:Kitchen": {
-          "set": 69.4,
-          "now": 72.6
-        }
-      }
-    },
     {
       "timestamp": "2026-07-09T05:04:25+0000",
       "readings": {
@@ -635,6 +614,27 @@
           "now": 70.5
         }
       }
+    },
+    {
+      "timestamp": "2026-07-11T13:50:47+0000",
+      "readings": {
+        "hottub:Jacuzzi J-335": {
+          "set": 72.0,
+          "now": 93.0
+        },
+        "nest:Cabana": {
+          "set": 76.0,
+          "now": 68.5
+        },
+        "nest:Primary Bedroom": {
+          "set": 69.0,
+          "now": 68.5
+        },
+        "nest:Kitchen": {
+          "set": 71.5,
+          "now": 70.5
+        }
+      }
     }
   ],
   "history_daily": [
@@ -804,7 +804,7 @@
     },
     {
       "date": "2026-07-11",
-      "timestamp": "2026-07-11T12:03:03+0000",
+      "timestamp": "2026-07-11T13:50:47+0000",
       "readings": {
         "hottub:Jacuzzi J-335": {
           "set": 72.0,
@@ -825,5 +825,5 @@
       }
     }
   ],
-  "generated_at": "2026-07-11T12:03:03+0000"
+  "generated_at": "2026-07-11T13:50:47+0000"
 }
