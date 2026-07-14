@@ -1,6 +1,6 @@
 {
   "current": {
-    "timestamp": "2026-07-14T22:12:12+0000",
+    "timestamp": "2026-07-14T23:10:34+0000",
     "overall_status": "crit",
     "in_ptown": false,
     "systems": [
@@ -19,7 +19,7 @@
         "devices": [
           {
             "name": "Jacuzzi J-335",
-            "current_f": 89.1,
+            "current_f": 88.0,
             "setpoint_f": 72.0,
             "mode": "heater off, away_from_home",
             "online": true,
@@ -132,27 +132,6 @@
     ]
   },
   "history_hourly": [
-    {
-      "timestamp": "2026-07-12T21:04:37+0000",
-      "readings": {
-        "hottub:Jacuzzi J-335": {
-          "set": 72.0,
-          "now": 91.0
-        },
-        "nest:Cabana": {
-          "set": 76.0,
-          "now": 70.5
-        },
-        "nest:Primary Bedroom": {
-          "set": 76.0,
-          "now": 76.6
-        },
-        "nest:Kitchen": {
-          "set": 76.0,
-          "now": 72.5
-        }
-      }
-    },
     {
       "timestamp": "2026-07-12T22:05:43+0000",
       "readings": {
@@ -635,6 +614,27 @@
           "now": 77.6
         }
       }
+    },
+    {
+      "timestamp": "2026-07-14T23:10:34+0000",
+      "readings": {
+        "hottub:Jacuzzi J-335": {
+          "set": 72.0,
+          "now": 88.0
+        },
+        "nest:Cabana": {
+          "set": 76.0,
+          "now": 73.5
+        },
+        "nest:Primary Bedroom": {
+          "set": 76.0,
+          "now": 79.5
+        },
+        "nest:Kitchen": {
+          "set": 76.0,
+          "now": 77.6
+        }
+      }
     }
   ],
   "history_daily": [
@@ -772,11 +772,11 @@
     },
     {
       "date": "2026-07-14",
-      "timestamp": "2026-07-14T22:12:12+0000",
+      "timestamp": "2026-07-14T23:10:34+0000",
       "readings": {
         "hottub:Jacuzzi J-335": {
           "set": 72.0,
-          "now": 89.1
+          "now": 88.0
         },
         "nest:Cabana": {
           "set": 76.0,
@@ -793,5 +793,5 @@
       }
     }
   ],
-  "generated_at": "2026-07-14T22:12:12+0000"
+  "generated_at": "2026-07-14T23:10:34+0000"
 }
