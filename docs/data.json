@@ -1,6 +1,6 @@
 {
   "current": {
-    "timestamp": "2026-07-14T17:33:22+0000",
+    "timestamp": "2026-07-14T19:41:18+0000",
     "overall_status": "crit",
     "in_ptown": false,
     "systems": [
@@ -60,7 +60,7 @@
           },
           {
             "name": "Primary Bedroom",
-            "current_f": 78.6,
+            "current_f": 79.5,
             "setpoint_f": 76.0,
             "mode": "Eco manual_eco, HVAC off",
             "online": true,
@@ -132,27 +132,6 @@
     ]
   },
   "history_hourly": [
-    {
-      "timestamp": "2026-07-12T16:12:20+0000",
-      "readings": {
-        "hottub:Jacuzzi J-335": {
-          "set": 72.0,
-          "now": 91.0
-        },
-        "nest:Cabana": {
-          "set": 76.0,
-          "now": 68.5
-        },
-        "nest:Primary Bedroom": {
-          "set": 76.0,
-          "now": 68.3
-        },
-        "nest:Kitchen": {
-          "set": 76.0,
-          "now": 71.4
-        }
-      }
-    },
     {
       "timestamp": "2026-07-12T17:16:26+0000",
       "readings": {
@@ -635,6 +614,27 @@
           "now": 77.6
         }
       }
+    },
+    {
+      "timestamp": "2026-07-14T19:41:18+0000",
+      "readings": {
+        "hottub:Jacuzzi J-335": {
+          "set": 72.0,
+          "now": 89.1
+        },
+        "nest:Cabana": {
+          "set": 76.0,
+          "now": 73.5
+        },
+        "nest:Primary Bedroom": {
+          "set": 76.0,
+          "now": 79.5
+        },
+        "nest:Kitchen": {
+          "set": 76.0,
+          "now": 77.6
+        }
+      }
     }
   ],
   "history_daily": [
@@ -772,7 +772,7 @@
     },
     {
       "date": "2026-07-14",
-      "timestamp": "2026-07-14T17:33:22+0000",
+      "timestamp": "2026-07-14T19:41:18+0000",
       "readings": {
         "hottub:Jacuzzi J-335": {
           "set": 72.0,
@@ -784,7 +784,7 @@
         },
         "nest:Primary Bedroom": {
           "set": 76.0,
-          "now": 78.6
+          "now": 79.5
         },
         "nest:Kitchen": {
           "set": 76.0,
@@ -793,5 +793,5 @@
       }
     }
   ],
-  "generated_at": "2026-07-14T17:33:22+0000"
+  "generated_at": "2026-07-14T19:41:18+0000"
 }
