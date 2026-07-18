@@ -1,6 +1,6 @@
 {
   "current": {
-    "timestamp": "2026-07-18T21:03:48+0000",
+    "timestamp": "2026-07-18T22:05:35+0000",
     "overall_status": "crit",
     "in_ptown": false,
     "systems": [
@@ -38,7 +38,7 @@
       {
         "system": "nest",
         "overall_status": "warn",
-        "overall_reason": "Cabana: cool setpoint 72.9\u00b0F while away \u2014 cooling bumped?; Primary Bedroom: cool setpoint 69.7\u00b0F while away \u2014 cooling bumped?; Kitchen: cool setpoint 71.0\u00b0F while away \u2014 cooling bumped?",
+        "overall_reason": "Cabana: cool setpoint 72.9\u00b0F while away \u2014 cooling bumped?; Primary Bedroom: cool setpoint 68.8\u00b0F while away \u2014 cooling bumped?; Kitchen: cool setpoint 68.2\u00b0F while away \u2014 cooling bumped?",
         "error": null,
         "devices": [
           {
@@ -60,8 +60,8 @@
           },
           {
             "name": "Primary Bedroom",
-            "current_f": 69.6,
-            "setpoint_f": 69.7,
+            "current_f": 68.5,
+            "setpoint_f": 68.8,
             "mode": "Cool, HVAC off",
             "online": true,
             "extra": {
@@ -70,27 +70,27 @@
               "thermostat_mode": "cool",
               "eco_mode": "off",
               "heat_f": null,
-              "cool_f": 69.7
+              "cool_f": 68.8
             },
             "status": "warn",
-            "reason": "cool setpoint 69.7\u00b0F while away \u2014 cooling bumped?"
+            "reason": "cool setpoint 68.8\u00b0F while away \u2014 cooling bumped?"
           },
           {
             "name": "Kitchen",
-            "current_f": 71.3,
-            "setpoint_f": 71.0,
+            "current_f": 71.5,
+            "setpoint_f": 68.2,
             "mode": "Cool, HVAC cooling",
             "online": true,
             "extra": {
-              "humidity": 51,
+              "humidity": 50,
               "hvac_status": "cooling",
               "thermostat_mode": "cool",
               "eco_mode": "off",
               "heat_f": null,
-              "cool_f": 71.0
+              "cool_f": 68.2
             },
             "status": "warn",
-            "reason": "cool setpoint 71.0\u00b0F while away \u2014 cooling bumped?"
+            "reason": "cool setpoint 68.2\u00b0F while away \u2014 cooling bumped?"
           }
         ]
       },
@@ -132,27 +132,6 @@
     ]
   },
   "history_hourly": [
-    {
-      "timestamp": "2026-07-17T03:34:43+0000",
-      "readings": {
-        "hottub:Jacuzzi J-335": {
-          "set": 72.0,
-          "now": 88.0
-        },
-        "nest:Cabana": {
-          "set": 76.0,
-          "now": 75.4
-        },
-        "nest:Primary Bedroom": {
-          "set": 76.0,
-          "now": 81.3
-        },
-        "nest:Kitchen": {
-          "set": 76.0,
-          "now": 79.5
-        }
-      }
-    },
     {
       "timestamp": "2026-07-17T06:25:58+0000",
       "readings": {
@@ -635,6 +614,27 @@
           "now": 71.3
         }
       }
+    },
+    {
+      "timestamp": "2026-07-18T22:05:35+0000",
+      "readings": {
+        "hottub:Jacuzzi J-335": {
+          "set": 72.0,
+          "now": 86.0
+        },
+        "nest:Cabana": {
+          "set": 72.9,
+          "now": 69.5
+        },
+        "nest:Primary Bedroom": {
+          "set": 68.8,
+          "now": 68.5
+        },
+        "nest:Kitchen": {
+          "set": 68.2,
+          "now": 71.5
+        }
+      }
     }
   ],
   "history_daily": [
@@ -772,7 +772,7 @@
     },
     {
       "date": "2026-07-18",
-      "timestamp": "2026-07-18T21:03:48+0000",
+      "timestamp": "2026-07-18T22:05:35+0000",
       "readings": {
         "hottub:Jacuzzi J-335": {
           "set": 72.0,
@@ -783,15 +783,15 @@
           "now": 69.5
         },
         "nest:Primary Bedroom": {
-          "set": 69.7,
-          "now": 69.6
+          "set": 68.8,
+          "now": 68.5
         },
         "nest:Kitchen": {
-          "set": 71.0,
-          "now": 71.3
+          "set": 68.2,
+          "now": 71.5
         }
       }
     }
   ],
-  "generated_at": "2026-07-18T21:03:48+0000"
+  "generated_at": "2026-07-18T22:05:36+0000"
 }
