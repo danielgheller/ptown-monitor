@@ -1,6 +1,6 @@
 {
   "current": {
-    "timestamp": "2026-07-19T12:05:37+0000",
+    "timestamp": "2026-07-19T13:50:36+0000",
     "overall_status": "crit",
     "in_ptown": false,
     "systems": [
@@ -38,7 +38,7 @@
       {
         "system": "nest",
         "overall_status": "warn",
-        "overall_reason": "Cabana: cool setpoint 72.9\u00b0F while away \u2014 cooling bumped?; Primary Bedroom: cool setpoint 67.2\u00b0F while away \u2014 cooling bumped?; Kitchen: cool setpoint 72.6\u00b0F while away \u2014 cooling bumped?",
+        "overall_reason": "Cabana: cool setpoint 72.9\u00b0F while away \u2014 cooling bumped?; Primary Bedroom: cool setpoint 72.1\u00b0F while away \u2014 cooling bumped?; Kitchen: cool setpoint 72.6\u00b0F while away \u2014 cooling bumped?",
         "error": null,
         "devices": [
           {
@@ -48,7 +48,7 @@
             "mode": "Cool, HVAC off",
             "online": true,
             "extra": {
-              "humidity": 62,
+              "humidity": 61,
               "hvac_status": "off",
               "thermostat_mode": "cool",
               "eco_mode": "off",
@@ -60,29 +60,29 @@
           },
           {
             "name": "Primary Bedroom",
-            "current_f": 66.7,
-            "setpoint_f": 67.2,
+            "current_f": 67.6,
+            "setpoint_f": 72.1,
             "mode": "Cool, HVAC off",
             "online": true,
             "extra": {
-              "humidity": 52,
+              "humidity": 54,
               "hvac_status": "off",
               "thermostat_mode": "cool",
               "eco_mode": "off",
               "heat_f": null,
-              "cool_f": 67.2
+              "cool_f": 72.1
             },
             "status": "warn",
-            "reason": "cool setpoint 67.2\u00b0F while away \u2014 cooling bumped?"
+            "reason": "cool setpoint 72.1\u00b0F while away \u2014 cooling bumped?"
           },
           {
             "name": "Kitchen",
-            "current_f": 68.5,
+            "current_f": 69.6,
             "setpoint_f": 72.6,
             "mode": "Cool, HVAC off",
             "online": true,
             "extra": {
-              "humidity": 55,
+              "humidity": 53,
               "hvac_status": "off",
               "thermostat_mode": "cool",
               "eco_mode": "off",
@@ -132,27 +132,6 @@
     ]
   },
   "history_hourly": [
-    {
-      "timestamp": "2026-07-17T21:06:47+0000",
-      "readings": {
-        "hottub:Jacuzzi J-335": {
-          "set": 72.0,
-          "now": 87.1
-        },
-        "nest:Cabana": {
-          "set": 72.9,
-          "now": 73.0
-        },
-        "nest:Primary Bedroom": {
-          "set": 70.0,
-          "now": 70.1
-        },
-        "nest:Kitchen": {
-          "set": 71.0,
-          "now": 71.5
-        }
-      }
-    },
     {
       "timestamp": "2026-07-17T22:05:13+0000",
       "readings": {
@@ -635,6 +614,27 @@
           "now": 68.5
         }
       }
+    },
+    {
+      "timestamp": "2026-07-19T13:50:36+0000",
+      "readings": {
+        "hottub:Jacuzzi J-335": {
+          "set": 72.0,
+          "now": 84.9
+        },
+        "nest:Cabana": {
+          "set": 72.9,
+          "now": 68.4
+        },
+        "nest:Primary Bedroom": {
+          "set": 72.1,
+          "now": 67.6
+        },
+        "nest:Kitchen": {
+          "set": 72.6,
+          "now": 69.6
+        }
+      }
     }
   ],
   "history_daily": [
@@ -772,7 +772,7 @@
     },
     {
       "date": "2026-07-19",
-      "timestamp": "2026-07-19T12:05:37+0000",
+      "timestamp": "2026-07-19T13:50:36+0000",
       "readings": {
         "hottub:Jacuzzi J-335": {
           "set": 72.0,
@@ -783,15 +783,15 @@
           "now": 68.4
         },
         "nest:Primary Bedroom": {
-          "set": 67.2,
-          "now": 66.7
+          "set": 72.1,
+          "now": 67.6
         },
         "nest:Kitchen": {
           "set": 72.6,
-          "now": 68.5
+          "now": 69.6
         }
       }
     }
   ],
-  "generated_at": "2026-07-19T12:05:37+0000"
+  "generated_at": "2026-07-19T13:50:36+0000"
 }
