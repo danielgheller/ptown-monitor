@@ -1,6 +1,6 @@
 {
   "current": {
-    "timestamp": "2026-07-23T23:11:01+0000",
+    "timestamp": "2026-07-24T00:09:33+0000",
     "overall_status": "crit",
     "in_ptown": false,
     "systems": [
@@ -13,8 +13,8 @@
       },
       {
         "system": "hottub",
-        "overall_status": "crit",
-        "overall_reason": "Jacuzzi J-335: offline",
+        "overall_status": "warn",
+        "overall_reason": "Jacuzzi J-335: setpoint 102.0\u00b0F while away \u2014 heater bumped?",
         "error": null,
         "devices": [
           {
@@ -22,7 +22,7 @@
             "current_f": 102.0,
             "setpoint_f": 102.0,
             "mode": "heater off, away_from_home",
-            "online": false,
+            "online": true,
             "extra": {
               "heater": "off",
               "state": "normal",
@@ -30,8 +30,8 @@
               "error_code": 0,
               "error_title": "All Clear"
             },
-            "status": "crit",
-            "reason": "offline"
+            "status": "warn",
+            "reason": "setpoint 102.0\u00b0F while away \u2014 heater bumped?"
           }
         ]
       },
@@ -48,7 +48,7 @@
             "mode": "Eco manual_eco, HVAC off",
             "online": true,
             "extra": {
-              "humidity": 57,
+              "humidity": 55,
               "hvac_status": "off",
               "thermostat_mode": "cool",
               "eco_mode": "manual_eco",
@@ -60,12 +60,12 @@
           },
           {
             "name": "Primary Bedroom",
-            "current_f": 78.4,
+            "current_f": 76.4,
             "setpoint_f": 76.0,
             "mode": "Eco manual_eco, HVAC off",
             "online": true,
             "extra": {
-              "humidity": 45,
+              "humidity": 50,
               "hvac_status": "off",
               "thermostat_mode": "cool",
               "eco_mode": "manual_eco",
@@ -77,12 +77,12 @@
           },
           {
             "name": "Kitchen",
-            "current_f": 75.5,
+            "current_f": 75.4,
             "setpoint_f": 76.0,
             "mode": "Eco manual_eco, HVAC off",
             "online": true,
             "extra": {
-              "humidity": 46,
+              "humidity": 52,
               "hvac_status": "off",
               "thermostat_mode": "cool",
               "eco_mode": "manual_eco",
@@ -132,27 +132,6 @@
     ]
   },
   "history_hourly": [
-    {
-      "timestamp": "2026-07-21T20:34:22+0000",
-      "readings": {
-        "hottub:Jacuzzi J-335": {
-          "set": 72.0,
-          "now": 84.0
-        },
-        "nest:Cabana": {
-          "set": 76.0,
-          "now": 72.5
-        },
-        "nest:Primary Bedroom": {
-          "set": 76.0,
-          "now": 77.5
-        },
-        "nest:Kitchen": {
-          "set": 76.0,
-          "now": 76.5
-        }
-      }
-    },
     {
       "timestamp": "2026-07-21T22:11:12+0000",
       "readings": {
@@ -635,6 +614,27 @@
           "now": 75.5
         }
       }
+    },
+    {
+      "timestamp": "2026-07-24T00:09:33+0000",
+      "readings": {
+        "hottub:Jacuzzi J-335": {
+          "set": 102.0,
+          "now": 102.0
+        },
+        "nest:Cabana": {
+          "set": 76.0,
+          "now": 73.5
+        },
+        "nest:Primary Bedroom": {
+          "set": 76.0,
+          "now": 76.4
+        },
+        "nest:Kitchen": {
+          "set": 76.0,
+          "now": 75.4
+        }
+      }
     }
   ],
   "history_daily": [
@@ -772,7 +772,7 @@
     },
     {
       "date": "2026-07-23",
-      "timestamp": "2026-07-23T23:11:01+0000",
+      "timestamp": "2026-07-24T00:09:33+0000",
       "readings": {
         "hottub:Jacuzzi J-335": {
           "set": 102.0,
@@ -784,14 +784,14 @@
         },
         "nest:Primary Bedroom": {
           "set": 76.0,
-          "now": 78.4
+          "now": 76.4
         },
         "nest:Kitchen": {
           "set": 76.0,
-          "now": 75.5
+          "now": 75.4
         }
       }
     }
   ],
-  "generated_at": "2026-07-23T23:11:01+0000"
+  "generated_at": "2026-07-24T00:09:33+0000"
 }
