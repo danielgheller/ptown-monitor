@@ -1,6 +1,6 @@
 {
   "current": {
-    "timestamp": "2026-07-24T17:49:23+0000",
+    "timestamp": "2026-07-24T19:44:37+0000",
     "overall_status": "crit",
     "in_ptown": false,
     "systems": [
@@ -19,7 +19,7 @@
         "devices": [
           {
             "name": "Jacuzzi J-335",
-            "current_f": 102.0,
+            "current_f": 100.9,
             "setpoint_f": 102.0,
             "mode": "heater off, away_from_home",
             "online": true,
@@ -38,17 +38,17 @@
       {
         "system": "nest",
         "overall_status": "warn",
-        "overall_reason": "Primary Bedroom: cool setpoint 72.8\u00b0F while away \u2014 cooling bumped?",
+        "overall_reason": "Primary Bedroom: cool setpoint 72.8\u00b0F while away \u2014 cooling bumped?; Kitchen: cool setpoint 71.8\u00b0F while away \u2014 cooling bumped?",
         "error": null,
         "devices": [
           {
             "name": "Cabana",
-            "current_f": 70.6,
+            "current_f": 72.6,
             "setpoint_f": 76.0,
             "mode": "Eco manual_eco, HVAC off",
             "online": true,
             "extra": {
-              "humidity": 65,
+              "humidity": 63,
               "hvac_status": "off",
               "thermostat_mode": "cool",
               "eco_mode": "manual_eco",
@@ -60,12 +60,12 @@
           },
           {
             "name": "Primary Bedroom",
-            "current_f": 72.5,
+            "current_f": 72.1,
             "setpoint_f": 72.8,
             "mode": "Cool, HVAC off",
             "online": true,
             "extra": {
-              "humidity": 59,
+              "humidity": 56,
               "hvac_status": "off",
               "thermostat_mode": "cool",
               "eco_mode": "off",
@@ -77,20 +77,20 @@
           },
           {
             "name": "Kitchen",
-            "current_f": 75.9,
-            "setpoint_f": 76.0,
-            "mode": "Eco manual_eco, HVAC off",
+            "current_f": 75.5,
+            "setpoint_f": 71.8,
+            "mode": "Cool, HVAC cooling",
             "online": true,
             "extra": {
-              "humidity": 58,
-              "hvac_status": "off",
+              "humidity": 54,
+              "hvac_status": "cooling",
               "thermostat_mode": "cool",
-              "eco_mode": "manual_eco",
-              "heat_f": 59.7,
-              "cool_f": 76.0
+              "eco_mode": "off",
+              "heat_f": null,
+              "cool_f": 71.8
             },
-            "status": "ok",
-            "reason": null
+            "status": "warn",
+            "reason": "cool setpoint 71.8\u00b0F while away \u2014 cooling bumped?"
           }
         ]
       },
@@ -132,27 +132,6 @@
     ]
   },
   "history_hourly": [
-    {
-      "timestamp": "2026-07-22T14:19:26+0000",
-      "readings": {
-        "hottub:Jacuzzi J-335": {
-          "set": 72.0,
-          "now": 82.9
-        },
-        "nest:Cabana": {
-          "set": 76.0,
-          "now": 73.5
-        },
-        "nest:Primary Bedroom": {
-          "set": 76.0,
-          "now": 76.4
-        },
-        "nest:Kitchen": {
-          "set": 76.0,
-          "now": 76.5
-        }
-      }
-    },
     {
       "timestamp": "2026-07-22T16:42:43+0000",
       "readings": {
@@ -635,6 +614,27 @@
           "now": 75.9
         }
       }
+    },
+    {
+      "timestamp": "2026-07-24T19:44:37+0000",
+      "readings": {
+        "hottub:Jacuzzi J-335": {
+          "set": 102.0,
+          "now": 100.9
+        },
+        "nest:Cabana": {
+          "set": 76.0,
+          "now": 72.6
+        },
+        "nest:Primary Bedroom": {
+          "set": 72.8,
+          "now": 72.1
+        },
+        "nest:Kitchen": {
+          "set": 71.8,
+          "now": 75.5
+        }
+      }
     }
   ],
   "history_daily": [
@@ -772,26 +772,26 @@
     },
     {
       "date": "2026-07-24",
-      "timestamp": "2026-07-24T17:49:23+0000",
+      "timestamp": "2026-07-24T19:44:37+0000",
       "readings": {
         "hottub:Jacuzzi J-335": {
           "set": 102.0,
-          "now": 102.0
+          "now": 100.9
         },
         "nest:Cabana": {
           "set": 76.0,
-          "now": 70.6
+          "now": 72.6
         },
         "nest:Primary Bedroom": {
           "set": 72.8,
-          "now": 72.5
+          "now": 72.1
         },
         "nest:Kitchen": {
-          "set": 76.0,
-          "now": 75.9
+          "set": 71.8,
+          "now": 75.5
         }
       }
     }
   ],
-  "generated_at": "2026-07-24T17:49:23+0000"
+  "generated_at": "2026-07-24T19:44:37+0000"
 }
