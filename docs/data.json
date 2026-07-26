@@ -1,6 +1,6 @@
 {
   "current": {
-    "timestamp": "2026-07-26T03:53:10+0000",
+    "timestamp": "2026-07-26T06:47:37+0000",
     "overall_status": "crit",
     "in_ptown": false,
     "systems": [
@@ -38,7 +38,7 @@
       {
         "system": "nest",
         "overall_status": "warn",
-        "overall_reason": "Primary Bedroom: cool setpoint 69.9\u00b0F while away \u2014 cooling bumped?; Kitchen: cool setpoint 71.3\u00b0F while away \u2014 cooling bumped?",
+        "overall_reason": "Primary Bedroom: cool setpoint 66.9\u00b0F while away \u2014 cooling bumped?; Kitchen: cool setpoint 71.3\u00b0F while away \u2014 cooling bumped?",
         "error": null,
         "devices": [
           {
@@ -48,7 +48,7 @@
             "mode": "Eco manual_eco, HVAC off",
             "online": true,
             "extra": {
-              "humidity": 60,
+              "humidity": 62,
               "hvac_status": "off",
               "thermostat_mode": "cool",
               "eco_mode": "manual_eco",
@@ -60,29 +60,29 @@
           },
           {
             "name": "Primary Bedroom",
-            "current_f": 69.6,
-            "setpoint_f": 69.9,
+            "current_f": 66.4,
+            "setpoint_f": 66.9,
             "mode": "Cool, HVAC off",
             "online": true,
             "extra": {
-              "humidity": 57,
+              "humidity": 60,
               "hvac_status": "off",
               "thermostat_mode": "cool",
               "eco_mode": "off",
               "heat_f": null,
-              "cool_f": 69.9
+              "cool_f": 66.9
             },
             "status": "warn",
-            "reason": "cool setpoint 69.9\u00b0F while away \u2014 cooling bumped?"
+            "reason": "cool setpoint 66.9\u00b0F while away \u2014 cooling bumped?"
           },
           {
             "name": "Kitchen",
-            "current_f": 70.8,
+            "current_f": 70.5,
             "setpoint_f": 71.3,
             "mode": "Cool, HVAC off",
             "online": true,
             "extra": {
-              "humidity": 64,
+              "humidity": 60,
               "hvac_status": "off",
               "thermostat_mode": "cool",
               "eco_mode": "off",
@@ -132,27 +132,6 @@
     ]
   },
   "history_hourly": [
-    {
-      "timestamp": "2026-07-24T09:31:35+0000",
-      "readings": {
-        "hottub:Jacuzzi J-335": {
-          "set": 102.0,
-          "now": 100.9
-        },
-        "nest:Cabana": {
-          "set": 76.0,
-          "now": 70.4
-        },
-        "nest:Primary Bedroom": {
-          "set": 67.2,
-          "now": 66.7
-        },
-        "nest:Kitchen": {
-          "set": 76.0,
-          "now": 71.3
-        }
-      }
-    },
     {
       "timestamp": "2026-07-24T11:54:57+0000",
       "readings": {
@@ -635,31 +614,30 @@
           "now": 70.8
         }
       }
-    }
-  ],
-  "history_daily": [
+    },
     {
-      "date": "2026-07-19",
-      "timestamp": "2026-07-20T00:09:36+0000",
+      "timestamp": "2026-07-26T06:47:37+0000",
       "readings": {
         "hottub:Jacuzzi J-335": {
-          "set": 72.0,
-          "now": 84.9
+          "set": 102.0,
+          "now": 100.9
         },
         "nest:Cabana": {
           "set": 76.0,
-          "now": 69.5
+          "now": 70.4
         },
         "nest:Primary Bedroom": {
-          "set": 76.0,
-          "now": 73.6
+          "set": 66.9,
+          "now": 66.4
         },
         "nest:Kitchen": {
-          "set": 76.0,
-          "now": 71.6
+          "set": 71.3,
+          "now": 70.5
         }
       }
-    },
+    }
+  ],
+  "history_daily": [
     {
       "date": "2026-07-20",
       "timestamp": "2026-07-21T03:41:32+0000",
@@ -791,7 +769,29 @@
           "now": 70.8
         }
       }
+    },
+    {
+      "date": "2026-07-26",
+      "timestamp": "2026-07-26T06:47:37+0000",
+      "readings": {
+        "hottub:Jacuzzi J-335": {
+          "set": 102.0,
+          "now": 100.9
+        },
+        "nest:Cabana": {
+          "set": 76.0,
+          "now": 70.4
+        },
+        "nest:Primary Bedroom": {
+          "set": 66.9,
+          "now": 66.4
+        },
+        "nest:Kitchen": {
+          "set": 71.3,
+          "now": 70.5
+        }
+      }
     }
   ],
-  "generated_at": "2026-07-26T03:53:10+0000"
+  "generated_at": "2026-07-26T06:47:37+0000"
 }
