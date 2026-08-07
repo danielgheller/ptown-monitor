@@ -1,6 +1,6 @@
 {
   "current": {
-    "timestamp": "2026-08-06T15:26:06+0000",
+    "timestamp": "2026-08-07T00:13:34+0000",
     "overall_status": "crit",
     "in_ptown": false,
     "systems": [
@@ -13,14 +13,14 @@
       },
       {
         "system": "hottub",
-        "overall_status": "ok",
-        "overall_reason": null,
+        "overall_status": "warn",
+        "overall_reason": "Jacuzzi J-335: setpoint 102.0\u00b0F while away \u2014 heater bumped?",
         "error": null,
         "devices": [
           {
             "name": "Jacuzzi J-335",
-            "current_f": 86.0,
-            "setpoint_f": 64.9,
+            "current_f": 102.0,
+            "setpoint_f": 102.0,
             "mode": "heater off, away_from_home",
             "online": true,
             "extra": {
@@ -30,67 +30,67 @@
               "error_code": 0,
               "error_title": "All Clear"
             },
-            "status": "ok",
-            "reason": null
+            "status": "warn",
+            "reason": "setpoint 102.0\u00b0F while away \u2014 heater bumped?"
           }
         ]
       },
       {
         "system": "nest",
-        "overall_status": "ok",
-        "overall_reason": null,
+        "overall_status": "warn",
+        "overall_reason": "Cabana: cool setpoint 73.6\u00b0F while away \u2014 cooling bumped?; Primary Bedroom: cool setpoint 69.3\u00b0F while away \u2014 cooling bumped?; Kitchen: cool setpoint 69.2\u00b0F while away \u2014 cooling bumped?",
         "error": null,
         "devices": [
           {
             "name": "Cabana",
             "current_f": 73.5,
-            "setpoint_f": 76.0,
-            "mode": "Eco manual_eco, HVAC off",
+            "setpoint_f": 73.6,
+            "mode": "Cool, HVAC off",
             "online": true,
             "extra": {
-              "humidity": 72,
+              "humidity": 63,
               "hvac_status": "off",
               "thermostat_mode": "cool",
-              "eco_mode": "manual_eco",
-              "heat_f": 59.7,
-              "cool_f": 76.0
+              "eco_mode": "off",
+              "heat_f": null,
+              "cool_f": 73.6
             },
-            "status": "ok",
-            "reason": null
+            "status": "warn",
+            "reason": "cool setpoint 73.6\u00b0F while away \u2014 cooling bumped?"
           },
           {
             "name": "Primary Bedroom",
-            "current_f": 78.4,
-            "setpoint_f": 76.0,
-            "mode": "Eco manual_eco, HVAC off",
+            "current_f": 75.4,
+            "setpoint_f": 69.3,
+            "mode": "Cool, HVAC cooling",
             "online": true,
             "extra": {
-              "humidity": 58,
-              "hvac_status": "off",
+              "humidity": 55,
+              "hvac_status": "cooling",
               "thermostat_mode": "cool",
-              "eco_mode": "manual_eco",
-              "heat_f": 59.6,
-              "cool_f": 76.0
+              "eco_mode": "off",
+              "heat_f": null,
+              "cool_f": 69.3
             },
-            "status": "ok",
-            "reason": null
+            "status": "warn",
+            "reason": "cool setpoint 69.3\u00b0F while away \u2014 cooling bumped?"
           },
           {
             "name": "Kitchen",
-            "current_f": 76.6,
-            "setpoint_f": 76.0,
-            "mode": "Eco manual_eco, HVAC off",
+            "current_f": 72.3,
+            "setpoint_f": 69.2,
+            "mode": "Cool, HVAC cooling",
             "online": true,
             "extra": {
-              "humidity": 60,
-              "hvac_status": "off",
+              "humidity": 51,
+              "hvac_status": "cooling",
               "thermostat_mode": "cool",
-              "eco_mode": "manual_eco",
-              "heat_f": 59.7,
-              "cool_f": 76.0
+              "eco_mode": "off",
+              "heat_f": null,
+              "cool_f": 69.2
             },
-            "status": "ok",
-            "reason": null
+            "status": "warn",
+            "reason": "cool setpoint 69.2\u00b0F while away \u2014 cooling bumped?"
           }
         ]
       },
@@ -132,27 +132,6 @@
     ]
   },
   "history_hourly": [
-    {
-      "timestamp": "2026-08-04T03:34:04+0000",
-      "readings": {
-        "hottub:Jacuzzi J-335": {
-          "set": 64.9,
-          "now": 89.1
-        },
-        "nest:Cabana": {
-          "set": 76.0,
-          "now": 70.7
-        },
-        "nest:Primary Bedroom": {
-          "set": 73.2,
-          "now": 73.6
-        },
-        "nest:Kitchen": {
-          "set": 72.6,
-          "now": 72.5
-        }
-      }
-    },
     {
       "timestamp": "2026-08-04T06:39:03+0000",
       "readings": {
@@ -635,6 +614,27 @@
           "now": 76.6
         }
       }
+    },
+    {
+      "timestamp": "2026-08-07T00:13:34+0000",
+      "readings": {
+        "hottub:Jacuzzi J-335": {
+          "set": 102.0,
+          "now": 102.0
+        },
+        "nest:Cabana": {
+          "set": 73.6,
+          "now": 73.5
+        },
+        "nest:Primary Bedroom": {
+          "set": 69.3,
+          "now": 75.4
+        },
+        "nest:Kitchen": {
+          "set": 69.2,
+          "now": 72.3
+        }
+      }
     }
   ],
   "history_daily": [
@@ -772,26 +772,26 @@
     },
     {
       "date": "2026-08-06",
-      "timestamp": "2026-08-06T15:26:06+0000",
+      "timestamp": "2026-08-07T00:13:34+0000",
       "readings": {
         "hottub:Jacuzzi J-335": {
-          "set": 64.9,
-          "now": 86.0
+          "set": 102.0,
+          "now": 102.0
         },
         "nest:Cabana": {
-          "set": 76.0,
+          "set": 73.6,
           "now": 73.5
         },
         "nest:Primary Bedroom": {
-          "set": 76.0,
-          "now": 78.4
+          "set": 69.3,
+          "now": 75.4
         },
         "nest:Kitchen": {
-          "set": 76.0,
-          "now": 76.6
+          "set": 69.2,
+          "now": 72.3
         }
       }
     }
   ],
-  "generated_at": "2026-08-06T15:26:06+0000"
+  "generated_at": "2026-08-07T00:13:35+0000"
 }
