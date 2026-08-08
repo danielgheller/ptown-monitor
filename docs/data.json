@@ -1,6 +1,6 @@
 {
   "current": {
-    "timestamp": "2026-08-08T02:19:41+0000",
+    "timestamp": "2026-08-08T04:19:18+0000",
     "overall_status": "crit",
     "in_ptown": false,
     "systems": [
@@ -38,7 +38,7 @@
       {
         "system": "nest",
         "overall_status": "warn",
-        "overall_reason": "Cabana: cool setpoint 73.6\u00b0F while away \u2014 cooling bumped?; Primary Bedroom: cool setpoint 70.5\u00b0F while away \u2014 cooling bumped?; Kitchen: cool setpoint 71.1\u00b0F while away \u2014 cooling bumped?",
+        "overall_reason": "Cabana: cool setpoint 73.6\u00b0F while away \u2014 cooling bumped?; Kitchen: cool setpoint 71.1\u00b0F while away \u2014 cooling bumped?",
         "error": null,
         "devices": [
           {
@@ -60,29 +60,29 @@
           },
           {
             "name": "Primary Bedroom",
-            "current_f": 70.3,
-            "setpoint_f": 70.5,
+            "current_f": 70.1,
+            "setpoint_f": 66.6,
             "mode": "Cool, HVAC off",
             "online": true,
             "extra": {
-              "humidity": 57,
+              "humidity": 56,
               "hvac_status": "off",
               "thermostat_mode": "cool",
               "eco_mode": "off",
               "heat_f": null,
-              "cool_f": 70.5
+              "cool_f": 66.6
             },
-            "status": "warn",
-            "reason": "cool setpoint 70.5\u00b0F while away \u2014 cooling bumped?"
+            "status": "ok",
+            "reason": null
           },
           {
             "name": "Kitchen",
-            "current_f": 74.4,
+            "current_f": 71.1,
             "setpoint_f": 71.1,
             "mode": "Cool, HVAC cooling",
             "online": true,
             "extra": {
-              "humidity": 52,
+              "humidity": 50,
               "hvac_status": "cooling",
               "thermostat_mode": "cool",
               "eco_mode": "off",
@@ -132,27 +132,6 @@
     ]
   },
   "history_hourly": [
-    {
-      "timestamp": "2026-08-06T06:43:25+0000",
-      "readings": {
-        "hottub:Jacuzzi J-335": {
-          "set": 64.9,
-          "now": 87.1
-        },
-        "nest:Cabana": {
-          "set": 76.0,
-          "now": 72.5
-        },
-        "nest:Primary Bedroom": {
-          "set": 76.0,
-          "now": 79.3
-        },
-        "nest:Kitchen": {
-          "set": 76.0,
-          "now": 76.5
-        }
-      }
-    },
     {
       "timestamp": "2026-08-06T09:49:19+0000",
       "readings": {
@@ -635,31 +614,30 @@
           "now": 74.4
         }
       }
-    }
-  ],
-  "history_daily": [
+    },
     {
-      "date": "2026-08-01",
-      "timestamp": "2026-08-02T03:49:56+0000",
+      "timestamp": "2026-08-08T04:19:18+0000",
       "readings": {
         "hottub:Jacuzzi J-335": {
-          "set": 64.9,
-          "now": 91.0
+          "set": 102.0,
+          "now": 102.9
         },
         "nest:Cabana": {
           "set": 73.6,
-          "now": 69.5
+          "now": 72.5
         },
         "nest:Primary Bedroom": {
-          "set": 68.8,
-          "now": 68.5
+          "set": 66.6,
+          "now": 70.1
         },
         "nest:Kitchen": {
-          "set": 73.8,
-          "now": 72.3
+          "set": 71.1,
+          "now": 71.1
         }
       }
-    },
+    }
+  ],
+  "history_daily": [
     {
       "date": "2026-08-02",
       "timestamp": "2026-08-03T03:51:36+0000",
@@ -791,7 +769,29 @@
           "now": 74.4
         }
       }
+    },
+    {
+      "date": "2026-08-08",
+      "timestamp": "2026-08-08T04:19:18+0000",
+      "readings": {
+        "hottub:Jacuzzi J-335": {
+          "set": 102.0,
+          "now": 102.9
+        },
+        "nest:Cabana": {
+          "set": 73.6,
+          "now": 72.5
+        },
+        "nest:Primary Bedroom": {
+          "set": 66.6,
+          "now": 70.1
+        },
+        "nest:Kitchen": {
+          "set": 71.1,
+          "now": 71.1
+        }
+      }
     }
   ],
-  "generated_at": "2026-08-08T02:19:41+0000"
+  "generated_at": "2026-08-08T04:19:19+0000"
 }
