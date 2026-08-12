@@ -1,6 +1,6 @@
 {
   "current": {
-    "timestamp": "2026-08-12T21:00:57+0000",
+    "timestamp": "2026-08-12T22:00:25+0000",
     "overall_status": "crit",
     "in_ptown": false,
     "systems": [
@@ -38,7 +38,7 @@
       {
         "system": "nest",
         "overall_status": "warn",
-        "overall_reason": "Primary Bedroom: cool setpoint 77.9\u00b0F while away \u2014 cooling bumped?; Kitchen: cool setpoint 75.7\u00b0F while away \u2014 cooling bumped?",
+        "overall_reason": "Primary Bedroom: cool setpoint 77.0\u00b0F while away \u2014 cooling bumped?; Kitchen: cool setpoint 74.8\u00b0F while away \u2014 cooling bumped?",
         "error": null,
         "devices": [
           {
@@ -60,37 +60,37 @@
           },
           {
             "name": "Primary Bedroom",
-            "current_f": 77.3,
-            "setpoint_f": 77.9,
-            "mode": "Cool, HVAC off",
+            "current_f": 77.5,
+            "setpoint_f": 77.0,
+            "mode": "Cool, HVAC cooling",
             "online": true,
             "extra": {
-              "humidity": 52,
-              "hvac_status": "off",
+              "humidity": 46,
+              "hvac_status": "cooling",
               "thermostat_mode": "cool",
               "eco_mode": "off",
               "heat_f": null,
-              "cool_f": 77.9
+              "cool_f": 77.0
             },
             "status": "warn",
-            "reason": "cool setpoint 77.9\u00b0F while away \u2014 cooling bumped?"
+            "reason": "cool setpoint 77.0\u00b0F while away \u2014 cooling bumped?"
           },
           {
             "name": "Kitchen",
             "current_f": 74.5,
-            "setpoint_f": 75.7,
-            "mode": "Cool, HVAC off",
+            "setpoint_f": 74.8,
+            "mode": "Cool, HVAC cooling",
             "online": true,
             "extra": {
-              "humidity": 49,
-              "hvac_status": "off",
+              "humidity": 51,
+              "hvac_status": "cooling",
               "thermostat_mode": "cool",
               "eco_mode": "off",
               "heat_f": null,
-              "cool_f": 75.7
+              "cool_f": 74.8
             },
             "status": "warn",
-            "reason": "cool setpoint 75.7\u00b0F while away \u2014 cooling bumped?"
+            "reason": "cool setpoint 74.8\u00b0F while away \u2014 cooling bumped?"
           }
         ]
       },
@@ -132,27 +132,6 @@
     ]
   },
   "history_hourly": [
-    {
-      "timestamp": "2026-08-11T11:54:24+0000",
-      "readings": {
-        "hottub:Jacuzzi J-335": {
-          "set": 64.9,
-          "now": 98.1
-        },
-        "nest:Cabana": {
-          "set": 76.0,
-          "now": 74.6
-        },
-        "nest:Primary Bedroom": {
-          "set": 76.0,
-          "now": 79.3
-        },
-        "nest:Kitchen": {
-          "set": 76.0,
-          "now": 77.6
-        }
-      }
-    },
     {
       "timestamp": "2026-08-11T13:39:18+0000",
       "readings": {
@@ -635,6 +614,27 @@
           "now": 74.5
         }
       }
+    },
+    {
+      "timestamp": "2026-08-12T22:00:25+0000",
+      "readings": {
+        "hottub:Jacuzzi J-335": {
+          "set": 64.9,
+          "now": 96.1
+        },
+        "nest:Cabana": {
+          "set": 76.0,
+          "now": 73.9
+        },
+        "nest:Primary Bedroom": {
+          "set": 77.0,
+          "now": 77.5
+        },
+        "nest:Kitchen": {
+          "set": 74.8,
+          "now": 74.5
+        }
+      }
     }
   ],
   "history_daily": [
@@ -772,7 +772,7 @@
     },
     {
       "date": "2026-08-12",
-      "timestamp": "2026-08-12T21:00:57+0000",
+      "timestamp": "2026-08-12T22:00:25+0000",
       "readings": {
         "hottub:Jacuzzi J-335": {
           "set": 64.9,
@@ -783,15 +783,15 @@
           "now": 73.9
         },
         "nest:Primary Bedroom": {
-          "set": 77.9,
-          "now": 77.3
+          "set": 77.0,
+          "now": 77.5
         },
         "nest:Kitchen": {
-          "set": 75.7,
+          "set": 74.8,
           "now": 74.5
         }
       }
     }
   ],
-  "generated_at": "2026-08-12T21:00:57+0000"
+  "generated_at": "2026-08-12T22:00:25+0000"
 }
