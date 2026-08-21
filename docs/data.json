@@ -1,6 +1,6 @@
 {
   "current": {
-    "timestamp": "2026-08-20T23:37:19+0000",
+    "timestamp": "2026-08-21T01:55:46+0000",
     "overall_status": "crit",
     "in_ptown": false,
     "systems": [
@@ -38,18 +38,18 @@
       {
         "system": "nest",
         "overall_status": "warn",
-        "overall_reason": "Cabana: cool setpoint 70.2\u00b0F while away \u2014 cooling bumped?; Kitchen: cool setpoint 72.3\u00b0F while away \u2014 cooling bumped?",
+        "overall_reason": "Cabana: cool setpoint 70.2\u00b0F while away \u2014 cooling bumped?; Primary Bedroom: cool setpoint 73.4\u00b0F while away \u2014 cooling bumped?; Kitchen: cool setpoint 72.3\u00b0F while away \u2014 cooling bumped?",
         "error": null,
         "devices": [
           {
             "name": "Cabana",
-            "current_f": 72.4,
+            "current_f": 69.2,
             "setpoint_f": 70.2,
-            "mode": "Cool, HVAC cooling",
+            "mode": "Cool, HVAC off",
             "online": true,
             "extra": {
-              "humidity": 65,
-              "hvac_status": "cooling",
+              "humidity": 59,
+              "hvac_status": "off",
               "thermostat_mode": "cool",
               "eco_mode": "off",
               "heat_f": null,
@@ -60,29 +60,29 @@
           },
           {
             "name": "Primary Bedroom",
-            "current_f": 73.6,
+            "current_f": 73.4,
             "setpoint_f": 73.4,
             "mode": "Cool, HVAC off",
             "online": true,
             "extra": {
-              "humidity": 54,
+              "humidity": 52,
               "hvac_status": "off",
               "thermostat_mode": "cool",
               "eco_mode": "off",
               "heat_f": null,
               "cool_f": 73.4
             },
-            "status": "ok",
-            "reason": null
+            "status": "warn",
+            "reason": "cool setpoint 73.4\u00b0F while away \u2014 cooling bumped?"
           },
           {
             "name": "Kitchen",
-            "current_f": 75.5,
+            "current_f": 72.5,
             "setpoint_f": 72.3,
             "mode": "Cool, HVAC cooling",
             "online": true,
             "extra": {
-              "humidity": 58,
+              "humidity": 51,
               "hvac_status": "cooling",
               "thermostat_mode": "cool",
               "eco_mode": "off",
@@ -132,27 +132,6 @@
     ]
   },
   "history_hourly": [
-    {
-      "timestamp": "2026-08-19T23:34:29+0000",
-      "readings": {
-        "hottub:Jacuzzi J-335": {
-          "set": 64.9,
-          "now": 87.1
-        },
-        "nest:Cabana": {
-          "set": 76.0,
-          "now": 74.5
-        },
-        "nest:Primary Bedroom": {
-          "set": 77.2,
-          "now": 76.4
-        },
-        "nest:Kitchen": {
-          "set": 76.1,
-          "now": 76.1
-        }
-      }
-    },
     {
       "timestamp": "2026-08-20T01:49:12+0000",
       "readings": {
@@ -635,6 +614,27 @@
           "now": 75.5
         }
       }
+    },
+    {
+      "timestamp": "2026-08-21T01:55:46+0000",
+      "readings": {
+        "hottub:Jacuzzi J-335": {
+          "set": 64.9,
+          "now": 86.0
+        },
+        "nest:Cabana": {
+          "set": 70.2,
+          "now": 69.2
+        },
+        "nest:Primary Bedroom": {
+          "set": 73.4,
+          "now": 73.4
+        },
+        "nest:Kitchen": {
+          "set": 72.3,
+          "now": 72.5
+        }
+      }
     }
   ],
   "history_daily": [
@@ -772,7 +772,7 @@
     },
     {
       "date": "2026-08-20",
-      "timestamp": "2026-08-20T23:37:19+0000",
+      "timestamp": "2026-08-21T01:55:46+0000",
       "readings": {
         "hottub:Jacuzzi J-335": {
           "set": 64.9,
@@ -780,18 +780,18 @@
         },
         "nest:Cabana": {
           "set": 70.2,
-          "now": 72.4
+          "now": 69.2
         },
         "nest:Primary Bedroom": {
           "set": 73.4,
-          "now": 73.6
+          "now": 73.4
         },
         "nest:Kitchen": {
           "set": 72.3,
-          "now": 75.5
+          "now": 72.5
         }
       }
     }
   ],
-  "generated_at": "2026-08-20T23:37:20+0000"
+  "generated_at": "2026-08-21T01:55:46+0000"
 }
