@@ -1,6 +1,6 @@
 {
   "current": {
-    "timestamp": "2026-08-22T01:48:14+0000",
+    "timestamp": "2026-08-22T03:06:06+0000",
     "overall_status": "crit",
     "in_ptown": false,
     "systems": [
@@ -77,12 +77,12 @@
           },
           {
             "name": "Kitchen",
-            "current_f": 70.1,
+            "current_f": 70.6,
             "setpoint_f": 70.6,
             "mode": "Cool, HVAC off",
             "online": true,
             "extra": {
-              "humidity": 51,
+              "humidity": 53,
               "hvac_status": "off",
               "thermostat_mode": "cool",
               "eco_mode": "off",
@@ -132,27 +132,6 @@
     ]
   },
   "history_hourly": [
-    {
-      "timestamp": "2026-08-21T01:55:46+0000",
-      "readings": {
-        "hottub:Jacuzzi J-335": {
-          "set": 64.9,
-          "now": 86.0
-        },
-        "nest:Cabana": {
-          "set": 70.2,
-          "now": 69.2
-        },
-        "nest:Primary Bedroom": {
-          "set": 73.4,
-          "now": 73.4
-        },
-        "nest:Kitchen": {
-          "set": 72.3,
-          "now": 72.5
-        }
-      }
-    },
     {
       "timestamp": "2026-08-21T03:14:07+0000",
       "readings": {
@@ -635,6 +614,27 @@
           "now": 70.1
         }
       }
+    },
+    {
+      "timestamp": "2026-08-22T03:06:06+0000",
+      "readings": {
+        "hottub:Jacuzzi J-335": {
+          "set": 104.0,
+          "now": 102.9
+        },
+        "nest:Cabana": {
+          "set": 69.9,
+          "now": 69.4
+        },
+        "nest:Primary Bedroom": {
+          "set": 71.9,
+          "now": 70.3
+        },
+        "nest:Kitchen": {
+          "set": 70.6,
+          "now": 70.6
+        }
+      }
     }
   ],
   "history_daily": [
@@ -772,7 +772,7 @@
     },
     {
       "date": "2026-08-21",
-      "timestamp": "2026-08-22T01:48:14+0000",
+      "timestamp": "2026-08-22T03:06:06+0000",
       "readings": {
         "hottub:Jacuzzi J-335": {
           "set": 104.0,
@@ -788,10 +788,10 @@
         },
         "nest:Kitchen": {
           "set": 70.6,
-          "now": 70.1
+          "now": 70.6
         }
       }
     }
   ],
-  "generated_at": "2026-08-22T01:48:14+0000"
+  "generated_at": "2026-08-22T03:06:07+0000"
 }
