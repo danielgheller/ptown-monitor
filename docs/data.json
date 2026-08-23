@@ -1,6 +1,6 @@
 {
   "current": {
-    "timestamp": "2026-08-23T19:32:05+0000",
+    "timestamp": "2026-08-23T20:36:45+0000",
     "overall_status": "crit",
     "in_ptown": false,
     "systems": [
@@ -14,13 +14,13 @@
       {
         "system": "hottub",
         "overall_status": "warn",
-        "overall_reason": "Jacuzzi J-335: setpoint 104.0\u00b0F while away \u2014 heater bumped?",
+        "overall_reason": "Jacuzzi J-335: setpoint 88.0\u00b0F while away \u2014 heater bumped?",
         "error": null,
         "devices": [
           {
             "name": "Jacuzzi J-335",
             "current_f": 102.9,
-            "setpoint_f": 104.0,
+            "setpoint_f": 88.0,
             "mode": "heater off, away_from_home",
             "online": true,
             "extra": {
@@ -31,66 +31,66 @@
               "error_title": "All Clear"
             },
             "status": "warn",
-            "reason": "setpoint 104.0\u00b0F while away \u2014 heater bumped?"
+            "reason": "setpoint 88.0\u00b0F while away \u2014 heater bumped?"
           }
         ]
       },
       {
         "system": "nest",
-        "overall_status": "warn",
-        "overall_reason": "Cabana: cool setpoint 69.7\u00b0F while away \u2014 cooling bumped?; Primary Bedroom: cool setpoint 71.6\u00b0F while away \u2014 cooling bumped?; Kitchen: cool setpoint 69.0\u00b0F while away \u2014 cooling bumped?",
+        "overall_status": "ok",
+        "overall_reason": null,
         "error": null,
         "devices": [
           {
             "name": "Cabana",
             "current_f": 68.5,
-            "setpoint_f": 69.7,
-            "mode": "Cool, HVAC off",
+            "setpoint_f": 76.0,
+            "mode": "Eco manual_eco, HVAC off",
             "online": true,
             "extra": {
               "humidity": 64,
               "hvac_status": "off",
               "thermostat_mode": "cool",
-              "eco_mode": "off",
-              "heat_f": null,
-              "cool_f": 69.7
+              "eco_mode": "manual_eco",
+              "heat_f": 59.7,
+              "cool_f": 76.0
             },
-            "status": "warn",
-            "reason": "cool setpoint 69.7\u00b0F while away \u2014 cooling bumped?"
+            "status": "ok",
+            "reason": null
           },
           {
             "name": "Primary Bedroom",
             "current_f": 69.6,
-            "setpoint_f": 71.6,
-            "mode": "Cool, HVAC off",
+            "setpoint_f": 76.0,
+            "mode": "Eco manual_eco, HVAC off",
             "online": true,
             "extra": {
               "humidity": 56,
               "hvac_status": "off",
               "thermostat_mode": "cool",
-              "eco_mode": "off",
-              "heat_f": null,
-              "cool_f": 71.6
+              "eco_mode": "manual_eco",
+              "heat_f": 59.6,
+              "cool_f": 76.0
             },
-            "status": "warn",
-            "reason": "cool setpoint 71.6\u00b0F while away \u2014 cooling bumped?"
+            "status": "ok",
+            "reason": null
           },
           {
             "name": "Kitchen",
-            "current_f": 68.8,
-            "setpoint_f": 69.0,
-            "mode": "Cool, HVAC off",
+            "current_f": 69.5,
+            "setpoint_f": 76.0,
+            "mode": "Eco manual_eco, HVAC off",
             "online": true,
             "extra": {
               "humidity": 60,
               "hvac_status": "off",
               "thermostat_mode": "cool",
-              "eco_mode": "off",
-              "heat_f": null,
-              "cool_f": 69.0
+              "eco_mode": "manual_eco",
+              "heat_f": 59.7,
+              "cool_f": 76.0
             },
-            "status": "warn",
-            "reason": "cool setpoint 69.0\u00b0F while away \u2014 cooling bumped?"
+            "status": "ok",
+            "reason": null
           }
         ]
       },
@@ -132,27 +132,6 @@
     ]
   },
   "history_hourly": [
-    {
-      "timestamp": "2026-08-22T19:32:52+0000",
-      "readings": {
-        "hottub:Jacuzzi J-335": {
-          "set": 104.0,
-          "now": 102.9
-        },
-        "nest:Cabana": {
-          "set": 69.9,
-          "now": 69.2
-        },
-        "nest:Primary Bedroom": {
-          "set": 72.8,
-          "now": 69.6
-        },
-        "nest:Kitchen": {
-          "set": 70.6,
-          "now": 70.2
-        }
-      }
-    },
     {
       "timestamp": "2026-08-22T20:37:09+0000",
       "readings": {
@@ -635,6 +614,27 @@
           "now": 68.8
         }
       }
+    },
+    {
+      "timestamp": "2026-08-23T20:36:45+0000",
+      "readings": {
+        "hottub:Jacuzzi J-335": {
+          "set": 88.0,
+          "now": 102.9
+        },
+        "nest:Cabana": {
+          "set": 76.0,
+          "now": 68.5
+        },
+        "nest:Primary Bedroom": {
+          "set": 76.0,
+          "now": 69.6
+        },
+        "nest:Kitchen": {
+          "set": 76.0,
+          "now": 69.5
+        }
+      }
     }
   ],
   "history_daily": [
@@ -772,26 +772,26 @@
     },
     {
       "date": "2026-08-23",
-      "timestamp": "2026-08-23T19:32:05+0000",
+      "timestamp": "2026-08-23T20:36:45+0000",
       "readings": {
         "hottub:Jacuzzi J-335": {
-          "set": 104.0,
+          "set": 88.0,
           "now": 102.9
         },
         "nest:Cabana": {
-          "set": 69.7,
+          "set": 76.0,
           "now": 68.5
         },
         "nest:Primary Bedroom": {
-          "set": 71.6,
+          "set": 76.0,
           "now": 69.6
         },
         "nest:Kitchen": {
-          "set": 69.0,
-          "now": 68.8
+          "set": 76.0,
+          "now": 69.5
         }
       }
     }
   ],
-  "generated_at": "2026-08-23T19:32:05+0000"
+  "generated_at": "2026-08-23T20:36:46+0000"
 }
