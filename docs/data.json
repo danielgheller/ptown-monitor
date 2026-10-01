@@ -1,6 +1,6 @@
 {
   "current": {
-    "timestamp": "2026-10-01T05:46:41+0000",
+    "timestamp": "2026-10-01T13:06:40+0000",
     "overall_status": "crit",
     "in_ptown": false,
     "systems": [
@@ -43,7 +43,7 @@
         "devices": [
           {
             "name": "Cabana",
-            "current_f": 66.7,
+            "current_f": 66.4,
             "setpoint_f": 76.0,
             "mode": "Eco manual_eco, HVAC off",
             "online": true,
@@ -132,23 +132,6 @@
     ]
   },
   "history_hourly": [
-    {
-      "timestamp": "2026-09-26T07:37:07+0000",
-      "readings": {
-        "nest:Cabana": {
-          "set": 76.0,
-          "now": 66.4
-        },
-        "nest:Primary Bedroom": {
-          "set": 76.0,
-          "now": 66.4
-        },
-        "nest:Kitchen": {
-          "set": 70.7,
-          "now": 67.5
-        }
-      }
-    },
     {
       "timestamp": "2026-09-26T13:02:20+0000",
       "readings": {
@@ -631,6 +614,27 @@
           "now": 68.4
         }
       }
+    },
+    {
+      "timestamp": "2026-10-01T13:06:40+0000",
+      "readings": {
+        "hottub:Jacuzzi J-335": {
+          "set": 64.9,
+          "now": 78.1
+        },
+        "nest:Cabana": {
+          "set": 76.0,
+          "now": 66.4
+        },
+        "nest:Primary Bedroom": {
+          "set": 76.0,
+          "now": 67.4
+        },
+        "nest:Kitchen": {
+          "set": 70.7,
+          "now": 68.4
+        }
+      }
     }
   ],
   "history_daily": [
@@ -768,7 +772,7 @@
     },
     {
       "date": "2026-10-01",
-      "timestamp": "2026-10-01T05:46:41+0000",
+      "timestamp": "2026-10-01T13:06:40+0000",
       "readings": {
         "hottub:Jacuzzi J-335": {
           "set": 64.9,
@@ -776,7 +780,7 @@
         },
         "nest:Cabana": {
           "set": 76.0,
-          "now": 66.7
+          "now": 66.4
         },
         "nest:Primary Bedroom": {
           "set": 76.0,
@@ -789,5 +793,5 @@
       }
     }
   ],
-  "generated_at": "2026-10-01T05:46:41+0000"
+  "generated_at": "2026-10-01T13:06:40+0000"
 }
