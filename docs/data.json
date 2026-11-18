@@ -1,6 +1,6 @@
 {
   "current": {
-    "timestamp": "2026-11-18T04:14:04+0000",
+    "timestamp": "2026-11-18T13:03:10+0000",
     "overall_status": "crit",
     "in_ptown": false,
     "systems": [
@@ -37,62 +37,10 @@
       },
       {
         "system": "nest",
-        "overall_status": "ok",
-        "overall_reason": null,
-        "error": null,
-        "devices": [
-          {
-            "name": "Cabana",
-            "current_f": 59.5,
-            "setpoint_f": 59.7,
-            "mode": "Eco manual_eco, HVAC off",
-            "online": true,
-            "extra": {
-              "humidity": 55,
-              "hvac_status": "off",
-              "thermostat_mode": "heat",
-              "eco_mode": "manual_eco",
-              "heat_f": 59.7,
-              "cool_f": 76.0
-            },
-            "status": "ok",
-            "reason": null
-          },
-          {
-            "name": "Primary Bedroom",
-            "current_f": 60.4,
-            "setpoint_f": 59.6,
-            "mode": "Eco manual_eco, HVAC off",
-            "online": true,
-            "extra": {
-              "humidity": 53,
-              "hvac_status": "off",
-              "thermostat_mode": "heat",
-              "eco_mode": "manual_eco",
-              "heat_f": 59.6,
-              "cool_f": 76.0
-            },
-            "status": "ok",
-            "reason": null
-          },
-          {
-            "name": "Kitchen",
-            "current_f": 60.5,
-            "setpoint_f": 59.7,
-            "mode": "Eco manual_eco, HVAC off",
-            "online": true,
-            "extra": {
-              "humidity": 53,
-              "hvac_status": "off",
-              "thermostat_mode": "heat",
-              "eco_mode": "manual_eco",
-              "heat_f": 59.7,
-              "cool_f": 76.0
-            },
-            "status": "ok",
-            "reason": null
-          }
-        ]
+        "overall_status": "crit",
+        "overall_reason": "HTTP 500 from https://oauth2.googleapis.com/token:\n{\n  \"error\": \"internal_failure\"\n}",
+        "error": "HTTP 500 from https://oauth2.googleapis.com/token:\n{\n  \"error\": \"internal_failure\"\n}",
+        "devices": []
       },
       {
         "system": "garage",
@@ -132,27 +80,6 @@
     ]
   },
   "history_hourly": [
-    {
-      "timestamp": "2026-11-11T10:49:01+0000",
-      "readings": {
-        "hottub:Jacuzzi J-335": {
-          "set": 64.9,
-          "now": 75.0
-        },
-        "nest:Cabana": {
-          "set": 59.7,
-          "now": 60.5
-        },
-        "nest:Primary Bedroom": {
-          "set": 59.6,
-          "now": 60.4
-        },
-        "nest:Kitchen": {
-          "set": 59.7,
-          "now": 61.6
-        }
-      }
-    },
     {
       "timestamp": "2026-11-11T18:39:27+0000",
       "readings": {
@@ -635,31 +562,18 @@
           "now": 60.5
         }
       }
-    }
-  ],
-  "history_daily": [
+    },
     {
-      "date": "2026-11-11",
-      "timestamp": "2026-11-12T01:29:54+0000",
+      "timestamp": "2026-11-18T13:03:10+0000",
       "readings": {
         "hottub:Jacuzzi J-335": {
           "set": 64.9,
-          "now": 73.9
-        },
-        "nest:Cabana": {
-          "set": 59.7,
-          "now": 61.4
-        },
-        "nest:Primary Bedroom": {
-          "set": 59.6,
-          "now": 62.4
-        },
-        "nest:Kitchen": {
-          "set": 59.7,
-          "now": 62.5
+          "now": 64.0
         }
       }
-    },
+    }
+  ],
+  "history_daily": [
     {
       "date": "2026-11-12",
       "timestamp": "2026-11-12T23:39:31+0000",
@@ -791,7 +705,17 @@
           "now": 60.5
         }
       }
+    },
+    {
+      "date": "2026-11-18",
+      "timestamp": "2026-11-18T13:03:10+0000",
+      "readings": {
+        "hottub:Jacuzzi J-335": {
+          "set": 64.9,
+          "now": 64.0
+        }
+      }
     }
   ],
-  "generated_at": "2026-11-18T04:14:04+0000"
+  "generated_at": "2026-11-18T13:03:11+0000"
 }
